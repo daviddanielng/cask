@@ -26,10 +26,29 @@ pub fn path_exists(path: &str) -> bool {
 }
 
 pub fn exit_with_error(message: &str) -> ! {
-    eprintln!("Error: {}", message);
+    eprintln!("\x1b[31mError: {}\x1b[0m", message);
     std::process::exit(1);
 }
 
 pub fn zip_dir() -> Option<String> {
     None
+}
+pub fn save_to_file(content: &[u8], path: &str) -> bool {
+    std::fs::write(path, content).is_ok()
+}
+
+pub fn generate_random_string(length: usize) -> String {
+    use rand::distr::{Alphanumeric, SampleString};
+    let mut rng = rand::rng();
+    Alphanumeric.sample_string(&mut rng, length)
+}
+
+pub fn delete_file(path: &str) -> bool {
+    if !is_file(path) {
+        exit_with_error(format!("{} is not a file.", path).as_str());
+    }
+    if !path_exists(path) {
+        exit_with_error(format!("File {} does not exist.", path).as_str());
+    }
+    std::fs::remove_file(path).is_ok()
 }

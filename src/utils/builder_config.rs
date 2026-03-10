@@ -2,19 +2,19 @@ use std::{collections::HashMap, path::Path};
 
 use crate::utils::{
     logger::{log_error, log_info, log_verbose, log_warning},
-    util::{self, exit_with_error},
+    util::{self, exit_with_error, help},
 };
 
 #[derive(Clone)]
 pub struct BuilderRunConfig {
-    pub folder_path: String,
+    pub input_path: String,
     pub output_path: String,
 }
 impl BuilderRunConfig {
     pub(crate) fn parse(arguments: Vec<String>) -> BuilderRunConfig {
         {
             let mut config = BuilderRunConfig {
-                folder_path: String::new(),
+                input_path: String::new(),
                 output_path: String::new(),
             };
             let mut last = HashMap::from([("--folder", false), ("--output", false)]);
@@ -43,12 +43,12 @@ impl BuilderRunConfig {
                     }
                 } else {
                     if *folder_last_value {
-                        config.folder_path = arg.clone();
+                        config.input_path = arg.clone();
 
                         last.insert("--folder", false);
                         log_verbose(&format!(
                             "folder to compress is set to {}",
-                            config.folder_path
+                            config.input_path
                         ));
                         continue;
                     }
@@ -62,6 +62,7 @@ impl BuilderRunConfig {
                         last.insert("--output", false);
                         continue;
                     }
+                    help();
                     exit_with_error(&format!("Unexpected value: {}", arg));
                 }
             }
@@ -76,7 +77,7 @@ impl BuilderRunConfig {
     }
 
     fn validate_input_dir_path(&self) -> bool {
-        let path = &self.folder_path;
+        let path = &self.input_path;
         log_verbose("validating folder path ");
         if path.is_empty() {
             log_error(
@@ -110,7 +111,7 @@ impl BuilderRunConfig {
     fn validate_output_dir_path(&mut self) -> bool {
         let path = &self.output_path;
         if path.is_empty() {
-            let alternate_output_path = Path::new(&self.folder_path).join(crate::FILESAVENAME);
+            let alternate_output_path = Path::new(&self.input_path).join(crate::FILESAVENAME);
             log_info(&format!(
                 "Output path not provided, using default output file name: {}",
                 alternate_output_path.display()

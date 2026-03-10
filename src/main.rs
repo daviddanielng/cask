@@ -10,11 +10,18 @@ static VERBOSE: OnceLock<bool> = OnceLock::new();
 static RUNCONFIG: OnceLock<utils::config::RunMode> = OnceLock::new();
 static FILESAVENAME: &str = "output.run";
 static CACHEDIR: OnceLock<String> = OnceLock::new();
-
-// static VERSION: &str = env!("CARGO_PKG_VERSION");
-// pub static mut VERBOSE: bool = false;
 fn main() {
-    if let Some(proj_dirs) = ProjectDirs::from("com", "daviddanielng", "stsf") {}
+    if let Some(proj_dirs) = ProjectDirs::from("com", "daviddanielng", "stsf") {
+        let cache_dir = proj_dirs.cache_dir().to_str().unwrap().to_string();
+
+        CACHEDIR.set(cache_dir).unwrap_or_else(|_| {
+            panic!("Failed to set CACHEDIR. This should never happen since it's only set once.");
+        });
+    } else {
+        panic!(
+            "Failed to determine cache directory. This should never happen on supported platforms."
+        );
+    }
     let config = utils::config::parse(std::env::args().collect());
     match config {
         RunMode::Builder(builder_config) => {
