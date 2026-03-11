@@ -1,7 +1,11 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    io::{Write, stdin},
+    path::Path,
+};
 
 use crate::utils::{
-    logger::{log_error, log_info, log_verbose, log_warning},
+    logger::{log_error, log_info, log_verbose, log_warning, log_warning_inline},
     util::{self, exit_with_error, help},
 };
 
@@ -9,6 +13,8 @@ use crate::utils::{
 pub struct BuilderRunConfig {
     pub input_path: String,
     pub output_path: String,
+    pub use_gzip: bool,
+    pub overwrite: bool,
 }
 impl BuilderRunConfig {
     pub(crate) fn parse(arguments: Vec<String>) -> BuilderRunConfig {
@@ -16,6 +22,8 @@ impl BuilderRunConfig {
             let mut config = BuilderRunConfig {
                 input_path: String::new(),
                 output_path: String::new(),
+                use_gzip: true,
+                overwrite: false,
             };
             let mut last = HashMap::from([("--folder", false), ("--output", false)]);
             for arg in arguments {
@@ -36,6 +44,12 @@ impl BuilderRunConfig {
                         "--output" => {
                             last.insert("--output", true);
                         }
+                        "--no-gzip" => {
+                            config.use_gzip = false;
+                        }
+                        "--overwrite" => {
+                            config.overwrite = true;
+                        }
                         _ => {
                             log_error(&format!("Unknown argument: {}", arg), None);
                             util::help();
@@ -44,7 +58,6 @@ impl BuilderRunConfig {
                 } else {
                     if *folder_last_value {
                         config.input_path = arg.clone();
-
                         last.insert("--folder", false);
                         log_verbose(&format!(
                             "folder to compress is set to {}",
@@ -72,35 +85,36 @@ impl BuilderRunConfig {
             config
         }
     }
+
     fn validate(&mut self) -> bool {
         self.validate_input_dir_path() && self.validate_output_dir_path()
     }
 
     fn validate_input_dir_path(&self) -> bool {
         let path = &self.input_path;
-        log_verbose("validating folder path ");
+        log_verbose("validating input path ");
         if path.is_empty() {
             log_error(
-                "No folder path provided. Use --folder <path> to specify the folder to pack.",
+                "No input path provided. Use --folder <path> to specify the folder to pack.",
                 None,
             );
             crate::utils::util::help();
             return false;
         }
-        log_verbose("dir path valid");
-        log_verbose("Checking if folder path exists");
+        log_verbose("input path valid");
+        log_verbose("checking if input path exists");
         if !util::path_exists(path) {
             log_error(
-                &format!("The specified folder path does not exist: {}", path),
+                &format!("the specified input path does not exist: {}", path),
                 None,
             );
             return false;
         }
         log_verbose("Path exists");
-        log_verbose("Checking if folder path is a directory");
+        log_verbose("Checking if input path is a directory");
         if !util::is_dir(path) {
             log_error(
-                &format!("The specified path is not a directory: {}", path),
+                &format!("The specified input path is not a directory: {}", path),
                 None,
             );
             return false;
@@ -108,6 +122,7 @@ impl BuilderRunConfig {
         log_verbose("Path is a directory");
         true
     }
+
     fn validate_output_dir_path(&mut self) -> bool {
         let path = &self.output_path;
         if path.is_empty() {
@@ -118,6 +133,7 @@ impl BuilderRunConfig {
             ));
             self.output_path = alternate_output_path.to_string_lossy().to_string();
         }
+
         if util::path_exists(&self.output_path) {
             if util::is_dir(&self.output_path) {
                 log_error(
@@ -129,9 +145,50 @@ impl BuilderRunConfig {
                 );
                 return false;
             }
-            log_warning("Output path already exists, it will be overwritten.");
+            if self.overwrite {
+                self.delete_present_output_file();
+                log_warning(
+                    format!("Output {} exists and will be overwritten", self.output_path).as_str(),
+                );
+                return true;
+            }
+            log_warning_inline(
+                format!(
+                    "file {} already exists and will be overwritten use --overwrite to bypass this. Do you want to proceed? (y/n):",
+                    self.output_path
+                )
+                .as_str(),
+            );
+
+            if self.ask_overwrite_permission() {
+                log_info(format!("deleting {}", self.output_path).as_str());
+                self.delete_present_output_file();
+            } else {
+                exit_with_error("Build cancelled.");
+            }
         }
 
         true
+    }
+    fn delete_present_output_file(&self) {
+        log_info("deleting existing output");
+        if util::delete_file(&self.output_path) {
+            log_info("file deleted successfully, proceeding with build...");
+        } else {
+            exit_with_error(format!("Failed to delete existing file {}. Please check your permissions and try again.",  self.output_path).as_str());
+        }
+    }
+    fn ask_overwrite_permission(&self) -> bool {
+        let mut input = String::new();
+        stdin().read_line(&mut input).expect("Failed to read line");
+        match input.as_str() {
+            "y\n" | "Y\n" => true,
+            "n\n" | "N\n" => false,
+            _ => {
+                print!("Invalid input, please enter y or n: ");
+                let _ = std::io::stdout().flush();
+                self.ask_overwrite_permission()
+            }
+        }
     }
 }

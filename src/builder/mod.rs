@@ -1,19 +1,31 @@
-use std::io::stdin;
-
 use crate::utils::{
-    logger::{log_info, log_warning},
-    util::{self, delete_file, exit_with_error},
+    logger::log_info,
+    util::{self, exit_with_error},
 };
+use ctrlc;
 
 pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
+    let (tx, rx) = std::sync::mpsc::channel();
+    ctrlc::set_handler(move || {
+        let _ = tx.send(());
+    })
+    .expect("Error setting Ctrl-C handler");
+
     log_info("starting build");
     let output = config.output_path.clone();
-    if !validate_output_path(&output) {
+    log_info(format!("proceeding with build, output file will be {}", output).as_str());
+    let temp_dir = util::generate_temp_dir();
+    let vv = crate::utils::hash_folder::hash(
+        &config.input_path,
+        &config.input_path,
+        config.use_gzip,
+        temp_dir.as_str(),
+    );
+    if rx.try_recv().is_ok() {
+        log_info("Build cancelled by user (Ctrl+C)");
+        clean_temp_dir(&temp_dir);
         return;
     }
-    log_info(format!("proceeding with build, output file will be {}", output).as_str());
-    log_info(format!("hashing folder {}...", config.input_path).as_str());
-    let vv = crate::utils::hash_folder::hash(&config.input_path);
     util::save_to_file(
         serde_json::to_string(&vv)
             .unwrap_or_else(|e| {
@@ -22,44 +34,50 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
             .as_bytes(),
         &output,
     );
-    // log_info(format!("hashing completed: {:?}", vv).as_str());
+    // clean_temp_dir(&temp_dir);
 }
-fn validate_output_path(output: &str) -> bool {
-    if util::path_exists(&output) {
-        log_warning(
-            format!(
-                "file {} already exists and will be overwritten. Do you want to proceed? (y/n)",
-                output
-            )
-            .as_str(),
-        );
-        if ask_overwrite_permission() {
-            log_info(format!("deleting {}", output).as_str());
-            if delete_file(&output) {
-                log_info("file deleted successfully, proceeding with build...");
-                return true;
-            } else {
-                exit_with_error(format!("Failed to delete existing file {}. Please check your permissions and try again.", output).as_str());
-            }
-        } else {
-            log_info("Build cancelled by user.");
-            return false;
-        }
-    }
-    true
-}
-fn ask_overwrite_permission() -> bool {
-    let mut input = String::new();
-    stdin().read_line(&mut input).expect("Failed to read line");
-    match input.as_str() {
-        "y\n" | "Y\n" => true,
-        "n\n" | "N\n" => false,
-        _ => {
-            println!("Invalid input, please enter y or n.");
-            ask_overwrite_permission()
-        }
+fn clean_temp_dir(temp_dir: &str) {
+    log_info(format!("Cleaning up temporary directory {} ", temp_dir).as_str());
+    if !util::delete_dir(temp_dir) {
+        log_info(format!("Failed to delete temporary directory at {}. Please check your permissions and delete it manually.", temp_dir).as_str());
     }
 }
+// fn validate_output_path(output: &str) -> bool {
+//     if util::path_exists(&output) {
+//         log_warning(
+//             format!(
+//                 "file {} already exists and will be overwritten. Do you want to proceed? (y/n)",
+//                 output
+//             )
+//             .as_str(),
+//         );
+//         if ask_overwrite_permission() {
+//             log_info(format!("deleting {}", output).as_str());
+//             if delete_file(&output) {
+//                 log_info("file deleted successfully, proceeding with build...");
+//                 return true;
+//             } else {
+//                 exit_with_error(format!("Failed to delete existing file {}. Please check your permissions and try again.", output).as_str());
+//             }
+//         } else {
+//             log_info("Build cancelled by user.");
+//             return false;
+//         }
+//     }
+//     true
+// }
+// fn ask_overwrite_permission() -> bool {
+//     let mut input = String::new();
+//     stdin().read_line(&mut input).expect("Failed to read line");
+//     match input.as_str() {
+//         "y\n" | "Y\n" => true,
+//         "n\n" | "N\n" => false,
+//         _ => {
+//             println!("Invalid input, please enter y or n.");
+//             ask_overwrite_permission()
+//         }
+//     }
+// }
 // pub fn start_buildere(arguments: Vec<String>) {
 //     let mut folder_path = String::new();
 //     let mut last = HashMap::from([("--folder", false)]);

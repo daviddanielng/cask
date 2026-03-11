@@ -11,7 +11,7 @@ static RUNCONFIG: OnceLock<utils::config::RunMode> = OnceLock::new();
 static FILESAVENAME: &str = "output.run";
 static CACHEDIR: OnceLock<String> = OnceLock::new();
 fn main() {
-    if let Some(proj_dirs) = ProjectDirs::from("com", "daviddanielng", "stsf") {
+    if let Some(proj_dirs) = ProjectDirs::from("com", "daviddanielng", "stsf@daviddanielng.xyz") {
         let cache_dir = proj_dirs.cache_dir().to_str().unwrap().to_string();
 
         CACHEDIR.set(cache_dir).unwrap_or_else(|_| {

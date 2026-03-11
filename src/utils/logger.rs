@@ -1,3 +1,5 @@
+use std::io::Write;
+
 pub fn log_error(message: &str, e: Option<&dyn std::error::Error>) {
     const RED: &str = "\x1b[31m";
     const RESET: &str = "\x1b[0m";
@@ -13,6 +15,13 @@ pub fn log_warning(message: &str) {
     const RESET: &str = "\x1b[0m";
 
     println!("{YELLOW}[WARNING] {message}{RESET}");
+}
+pub fn log_warning_inline(message: &str) {
+    const YELLOW: &str = "\x1b[33m";
+    const RESET: &str = "\x1b[0m";
+
+    print!("{YELLOW}[WARNING] {message}{RESET}");
+    let _ = std::io::stdout().flush();
 }
 pub fn log_info(message: &str) {
     println!("[INFO] {}", message);
