@@ -23,7 +23,7 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     );
     if rx.try_recv().is_ok() {
         log_info("Build cancelled by user (Ctrl+C)");
-        clean_temp_dir(&temp_dir);
+        clean_temp_dir_files(&temp_dir);
         return;
     }
     util::save_to_file(
@@ -32,16 +32,35 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
                 exit_with_error(format!("Failed to serialize folder hash data: {}", e).as_str())
             })
             .as_bytes(),
-        &output,
+        format!("{}.json", output).as_str(),
     );
-    // clean_temp_dir(&temp_dir);
+    util::zip_dir(&vv.path, format!("{}.zip", &vv.path).as_str());
+    util::copy_file(
+        format!("{}.zip", &vv.path).as_str(),
+        format!("{}.zip", &config.output_path).as_str(),
+    );
+    clean_temp_dir_files(&temp_dir);
 }
-fn clean_temp_dir(temp_dir: &str) {
+fn clean_temp_dir_files(temp_dir: &str) {
     log_info(format!("Cleaning up temporary directory {} ", temp_dir).as_str());
     if !util::delete_dir(temp_dir) {
         log_info(format!("Failed to delete temporary directory at {}. Please check your permissions and delete it manually.", temp_dir).as_str());
     }
+    if util::path_exists(format!("{}.zip", temp_dir).as_str()) {
+        log_info(
+            format!(
+                "Cleaning up temporary zipped file {} ",
+                format!("{}.zip", temp_dir)
+            )
+            .as_str(),
+        );
+
+        if !util::delete_file(format!("{}.zip", temp_dir).as_str()) {
+            log_info(format!("Failed to delete temporary zipped file at {}. Please check your permissions or delete it manually.", format!("{}.zip", temp_dir)).as_str());
+        }
+    }
 }
+
 // fn validate_output_path(output: &str) -> bool {
 //     if util::path_exists(&output) {
 //         log_warning(

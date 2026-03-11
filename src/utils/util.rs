@@ -1,4 +1,8 @@
+use std::io::{Read, Write};
 use std::{fs::File, io::copy, path};
+use walkdir::WalkDir;
+use zip::write::SimpleFileOptions;
+use zip::{CompressionMethod, ZipWriter, write::FileOptions};
 
 use flate2::{Compression, write::GzEncoder};
 
@@ -25,7 +29,9 @@ pub fn help() {
 pub fn is_dir(path: &str) -> bool {
     std::path::Path::new(path).is_dir()
 }
-
+pub fn file_size(path: &str) -> u64 {
+    std::fs::metadata(path).map(|meta| meta.len()).unwrap_or(0)
+}
 pub fn is_file(path: &str) -> bool {
     std::path::Path::new(path).is_file()
 }
@@ -37,14 +43,7 @@ pub fn exit_with_error(message: &str) -> ! {
     eprintln!("\x1b[31mError: {}\x1b[0m", message);
     std::process::exit(1);
 }
-pub fn exit_with_error_new(message: &str) -> ! {
-    eprintln!("\x1b[31mError: {}\x1b[0m", message);
-    std::process::exit(1);
-}
 
-pub fn gzip_dir(from:&str,to:&str) -> Option<String> {
-    None
-}
 pub fn save_to_file(content: &[u8], path: &str) -> bool {
     std::fs::write(path, content).is_ok()
 }
@@ -138,7 +137,7 @@ pub fn gzip_file(from: &str, to: &str) {
     ) {
         exit_with_error(format!("Output directory for gzip does not exist: {}", to).as_str());
     }
-log_verbose(format!("gzipping file {} to {}", from, to).as_str());
+    log_verbose(format!("gzipping file {} to {}", from, to).as_str());
     let mut input = File::open(from).unwrap_or_else(|_| {
         exit_with_error(format!("Failed to open file for gzip: {}", from).as_str());
     });
@@ -154,4 +153,35 @@ log_verbose(format!("gzipping file {} to {}", from, to).as_str());
             format!("Failed to finish gzip encoding for file {}: {}", from, e).as_str(),
         );
     });
+}
+pub fn zip_dir(input_dir: &str, output_path: &str) {
+    let file = File::create(output_path).unwrap();
+    let mut zip = ZipWriter::new(file);
+
+    let options: SimpleFileOptions =
+        FileOptions::default().compression_method(CompressionMethod::Deflated);
+
+    for entry in WalkDir::new(input_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file())
+    {
+        // get relative path e.g. "css/style.css" not "/home/user/project/css/style.css"
+        let rel_path = entry
+            .path()
+            .strip_prefix(input_dir)
+            .unwrap()
+            .to_string_lossy()
+            .replace('\\', "/"); // normalize for Windows
+
+        zip.start_file(&rel_path, options).unwrap();
+
+        let mut f = File::open(entry.path()).unwrap();
+        let mut buffer = Vec::new();
+        f.read_to_end(&mut buffer).unwrap();
+
+        zip.write_all(&buffer).unwrap();
+    }
+
+    zip.finish().unwrap();
 }

@@ -28,9 +28,9 @@ pub enum PathType {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FolderInfo {
-    path: String,
-    children: Vec<PathType>,
-    size: u64,
+    pub path: String,
+    pub children: Vec<PathType>,
+    pub size: u64,
 }
 
 /// Metadata collected for a single file.
@@ -117,6 +117,7 @@ pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderInf
                         util::gzip_file(&entry_path_str, &out_path_str);
                         log_verbose("file gzipped successfully, updating folder info");
                         file_info.gzip = true;
+                        file_info.size = util::file_size(&out_path_str);
                     } else {
                         log_verbose("copying file to temp directory");
                         if !util::copy_file(&entry_path_str, &out_path_str) {
@@ -130,7 +131,7 @@ pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderInf
                         }
                         log_verbose("file copied successfully, updating folder info");
                     }
-                    folder_info.size += file_size;
+                    folder_info.size += file_info.size;
                     folder_info.children.push(PathType::File(file_info));
                 } else if entry_path.is_dir() {
                     if !out_path.exists() {
