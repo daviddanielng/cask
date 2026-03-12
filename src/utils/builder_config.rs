@@ -146,7 +146,7 @@ impl BuilderRunConfig {
                 return false;
             }
             if self.overwrite {
-                self.delete_present_output_file();
+                self.remove_existing_output_file();
                 log_warning(
                     format!("Output {} exists and will be overwritten", self.output_path).as_str(),
                 );
@@ -162,7 +162,7 @@ impl BuilderRunConfig {
 
             if self.ask_overwrite_permission() {
                 log_info(format!("deleting {}", self.output_path).as_str());
-                self.delete_present_output_file();
+                self.remove_existing_output_file();
             } else {
                 exit_with_error("Build cancelled.");
             }
@@ -170,7 +170,8 @@ impl BuilderRunConfig {
 
         true
     }
-    fn delete_present_output_file(&self) {
+
+    fn remove_existing_output_file(&self) {
         log_info("deleting existing output");
         if util::delete_file(&self.output_path) {
             log_info("file deleted successfully, proceeding with build...");
