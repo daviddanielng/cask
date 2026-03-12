@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::utils::{
     executable,
     logger::log_info,
@@ -13,44 +15,50 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     .expect("Error setting Ctrl-C handler");
 
     log_info("starting build");
-    let output = config.output_path.clone();
-    log_info(format!("proceeding with build, output file will be {}", output).as_str());
     let temp_dir = util::generate_temp_dir();
+    log_info("making files hash");
     let vv = crate::utils::hash_folder::hash(
         &config.input_path,
         &config.input_path,
         config.use_gzip,
         temp_dir.as_str(),
     );
+    log_info("files hashed successfully");
     if rx.try_recv().is_ok() {
+        // if we receive a signal, it means the user wants to cancel the build
         log_info("Build cancelled by user (Ctrl+C)");
         clean_temp_dir_files(&temp_dir);
         return;
     }
+
+    let zip_path = Path::new(format!("{}.zip", temp_dir).as_str())
+        .to_string_lossy()
+        .to_string();
+    let folder_info_safe_str = Path::new(&temp_dir)
+        .join("folder_info.json")
+        .to_string_lossy()
+        .to_string();
+
     util::save_to_file(
         serde_json::to_string(&vv)
             .unwrap_or_else(|e| {
                 exit_with_error(format!("Failed to serialize folder hash data: {}", e).as_str())
             })
             .as_bytes(),
-        format!("{}.json", output).as_str(),
+        &folder_info_safe_str,
     );
-    util::zip_dir(&vv.path, format!("{}.zip", &vv.path).as_str());
-    util::copy_file(
-        format!("{}.zip", &vv.path).as_str(),
-        format!("{}.zip", &config.output_path).as_str(),
-    );
-    let exe_path = build_exe(temp_dir.as_str());
+    log_info("zipping web files");
+    util::zip_dir(&vv.path, zip_path.as_str());
+    log_info("web files zipped successfully");
+    log_info("building executable");
+    let exe_path = executable::build(temp_dir.as_str(), zip_path.as_str());
     util::copy_file(
         exe_path.as_str(),
         format!("{}.run", &config.output_path).as_str(),
     );
+    log_info("executable built");
     clean_temp_dir_files(&temp_dir);
-}
-
-fn build_exe(temp_dir: &str) -> String {
-    log_info("building executable");
-    executable::add_files(temp_dir)
+    log_info(format!("Build completed successfully. You can find the packed executable at: {}.run; you can run it to start the server.", &config.output_path).as_str());
 }
 
 fn clean_temp_dir_files(temp_dir: &str) {

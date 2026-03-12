@@ -1,48 +1,105 @@
-use std::path::Path;
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Write},
+    path::Path,
+};
 static MAGIC_NUMBER: &[u8; 8] = b"SFS1XV2Z";
-static VERSION: &[u8; 8] = b"1.0.0\0\0";
 use crate::utils::{
     logger::log_verbose,
     util::{self, exit_with_error},
 };
-#[derive(Clone)]
-pub struct AppendFiles {
-    pub zip: String,
-    pub zip_info: String,
-}
-pub fn add_files(temp_dir: &str, files: AppendFiles) -> String {
+
+pub fn build(temp_dir: &str, zip: &str) -> String {
     let current_exe = std::env::current_exe().unwrap_or_else(|e| {
         exit_with_error(format!("An error occurred while trying to get execuable: {}", e).as_str());
     });
+
     let exe_str_path = current_exe.to_str().unwrap_or_else(|| {
         exit_with_error("An error occurred while trying to convert executable path to string.");
     });
+
     let generated_path = Path::new(temp_dir).join("executable");
     let path_str = generated_path.to_str().unwrap_or_else(|| {
         exit_with_error("An error occurred while trying to convert generated path to string.");
     });
-    log_verbose("copying executable to temp dir");
-    util::copy_file(exe_str_path, &path_str);
-    log_verbose("executable copied to temp dir");
-    let magic_number = b"SFS";
-    for file in files {
-        log_verbose(format!("Adding file {} to executable", file).as_str());
-        let file_bytes = std::fs::read(file).unwrap();
 
-        util::append_file_to_executable(&path_str, file);
-    }
+    log_verbose("copying executable to temp dir");
+    util::copy_file(exe_str_path, path_str);
+    log_verbose("executable copied to temp dir");
+
+    log_verbose("Adding website files to executable");
+    let output = OpenOptions::new()
+        .append(true)
+        .open(path_str)
+        .unwrap_or_else(|e| {
+            exit_with_error(format!("failed to open output executable: {}", e).as_str())
+        });
+
+    let mut writer = BufWriter::with_capacity(1024 * 1024, output); // 1MB write buffer
+    append_file_to_executable(&mut writer, zip);
+    writer.flush().unwrap_or_else(|e| {
+        exit_with_error(format!("failed to flush output executable: {}", e).as_str())
+    });
+    log_verbose("Website files added to executable");
+
     path_str.to_string()
 }
-fn add_file_to_executable(exe_path: &str, file_path: &str, magic_number: &[u8; 8]) {
-    let file_bytes = std::fs::read(file_path).unwrap_or_else(|e| {
+
+fn append_file_to_executable<W: Write>(exe_path: &mut W, file_path: &str) {
+    let input = File::open(file_path).unwrap_or_else(|e| {
         exit_with_error(
             format!(
-                "failed to append file {} to execuatable: error {}",
+                "failed to open file {} for appending to executable: error {}",
                 file_path, e
             )
             .as_str(),
         );
     });
-    let file_size = file_bytes.len() as u64;
+
+    let file_size = input
+        .metadata()
+        .unwrap_or_else(|e| {
+            exit_with_error(
+                format!(
+                    "failed to read metadata for file {}: error {}",
+                    file_path, e
+                )
+                .as_str(),
+            );
+        })
+        .len();
+
+    let mut reader = BufReader::with_capacity(1024 * 1024, input); // 1MB read buffer
+
+    std::io::copy(&mut reader, exe_path).unwrap_or_else(|e| {
+        exit_with_error(
+            format!(
+                "failed to stream file {} into executable: error {}",
+                file_path, e
+            )
+            .as_str(),
+        );
+    });
+    std::io::copy(&mut std::io::Cursor::new(MAGIC_NUMBER), exe_path).unwrap_or_else(|e| {
+        exit_with_error(
+            format!(
+                "failed to write magic number to executable after file {}: error {}",
+                file_path, e
+            )
+            .as_str(),
+        );
+    });
+
+    exe_path
+        .write_all(&file_size.to_le_bytes())
+        .unwrap_or_else(|e| {
+            exit_with_error(
+                format!(
+                    "failed to write file size of file {} to executable: error {}",
+                    file_path, e
+                )
+                .as_str(),
+            );
+        });
 }
 pub fn read_files() {}

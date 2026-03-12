@@ -10,6 +10,8 @@ static VERBOSE: OnceLock<bool> = OnceLock::new();
 static RUNCONFIG: OnceLock<utils::config::RunMode> = OnceLock::new();
 static FILESAVENAME: &str = "output.run";
 static CACHEDIR: OnceLock<String> = OnceLock::new();
+static VERSION: &str = env!("CARGO_PKG_VERSION");
+static MIN_VERSION: &str = "0.1.0";
 fn main() {
     if let Some(proj_dirs) = ProjectDirs::from("com", "daviddanielng", "stsf@daviddanielng.xyz") {
         let cache_dir = proj_dirs.cache_dir().to_str().unwrap().to_string();

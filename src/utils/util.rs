@@ -80,13 +80,10 @@ pub fn create_dirs(path: &str) -> bool {
     std::fs::create_dir_all(path).is_ok()
 }
 pub fn copy_file(src: &str, dst: &str) -> bool {
-    if !is_file(src) {
-        exit_with_error(format!("{} is not a file.", src).as_str());
-    }
-    if !path_exists(src) {
-        exit_with_error(format!("Source file {} does not exist.", src).as_str());
-    }
-    std::fs::copy(src, dst).is_ok()
+    std::fs::copy(src, dst).unwrap_or_else(|e| {
+        exit_with_error(format!("Failed to copy {} to {}: {}", src, dst, e).as_str());
+    });
+    true
 }
 pub fn generate_temp_dir() -> String {
     let temp_dir = crate::CACHEDIR.get().unwrap_or_else(|| {
