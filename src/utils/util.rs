@@ -1,4 +1,3 @@
-use std::fmt::Display;
 use std::io::{Read, Write};
 use std::{fs::File, io::copy, path};
 use walkdir::WalkDir;
@@ -19,14 +18,37 @@ pub fn help() {
     --no-gzip                    Disable gzip compression for the packed files.
     --overwrite                  Allow overwriting the output file if it already exists.
 
---serve   Extract and serve files from a packed executable. 
+--serve <config_file>   Extract and serve files from a packed executable. 
 
 --verbose   Enable verbose logging for more detailed output.
 --help     Show this help message and exit.
 "
     );
 }
+pub fn dir_has_content(path: &str) -> bool {
+    WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .any(|e| e.path().is_file())
+}
+pub fn is_file_extension(path: &str, extension: &str) -> bool {
+    std::path::Path::new(path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map_or(false, |ext_str| ext_str.eq_ignore_ascii_case(extension))
+}
+pub fn bytes_to_readable_size(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    let mut size = bytes as f64;
+    let mut unit_index = 0;
 
+    while size >= 1024.0 && unit_index < UNITS.len() - 1 {
+        size /= 1024.0;
+        unit_index += 1;
+    }
+
+    format!("{:.2} {}", size, UNITS[unit_index])
+}
 pub fn is_dir(path: &str) -> bool {
     std::path::Path::new(path).is_dir()
 }
@@ -44,12 +66,7 @@ pub fn exit_with_error(message: &str) -> ! {
     eprintln!("\x1b[31mError: {}\x1b[0m", message);
     std::process::exit(1);
 }
-pub fn exit_and_error(msg: impl Display) -> ! {
-    // eprintln!("{msg}");
-    eprintln!("\x1b[31mError: {}\x1b[0m", msg);
 
-    std::process::exit(1);
-}
 pub fn save_to_file(content: &[u8], path: &str) -> bool {
     std::fs::write(path, content).is_ok()
 }

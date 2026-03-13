@@ -32,3 +32,11 @@ pub fn log_verbose(message: &str) {
         println!("[VERBOSE] {}", message);
     }
 }
+
+macro_rules! error {
+     ($($arg:tt)*) => {{
+        $crate::utils::logger::log_error(&format!($($arg)*), None);
+    }};
+}
+
+pub(crate) use error;

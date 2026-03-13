@@ -7,7 +7,7 @@ use std::{
 use crate::utils::{
     logger::{log_error, log_info, log_verbose, log_warning, log_warning_inline},
     util::{self, exit_with_error, help},
-};
+}; 
 
 #[derive(Clone)]
 pub struct BuilderRunConfig {
@@ -193,3 +193,4 @@ impl BuilderRunConfig {
         }
     }
 }
+

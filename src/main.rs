@@ -29,8 +29,8 @@ fn main() {
         RunMode::Builder(builder_config) => {
             builder::start_builder(builder_config);
         }
-        RunMode::Server => {
-            server::start_server();
+        RunMode::Server (server_config) => {
+            server::start_server(server_config);
         }
     }
 }

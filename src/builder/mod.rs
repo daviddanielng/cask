@@ -3,7 +3,8 @@ use std::path::Path;
 use crate::utils::{
     executable,
     logger::log_info,
-    util::{self, exit_with_error},
+    macros::{self, exit_and_error},
+    util,
 };
 use ctrlc;
 
@@ -42,7 +43,7 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     util::save_to_file(
         serde_json::to_string(&vv)
             .unwrap_or_else(|e| {
-                exit_with_error(format!("Failed to serialize folder hash data: {}", e).as_str())
+                exit_and_error!("Failed to serialize folder hash data: {}", e);
             })
             .as_bytes(),
         &folder_info_safe_str,

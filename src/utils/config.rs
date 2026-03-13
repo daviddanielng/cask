@@ -1,8 +1,8 @@
-use crate::utils::builder_config::BuilderRunConfig;
+use crate::utils::{builder_config::BuilderRunConfig, logger, server_config::ServerRunConfig};
 
 #[derive(Clone)]
 pub enum RunMode {
-    Server,
+    Server(ServerRunConfig),
     Builder(BuilderRunConfig),
 }
 
@@ -36,12 +36,17 @@ fn get_run_mode(arguments: Vec<String>) -> RunMode {
 
             RunMode::Builder(config)
         }
-        "--serve" => RunMode::Server,
+        "--serve" => {
+            let config =
+                crate::utils::server_config::ServerRunConfig::parse(arguments[2..].to_vec());
+            RunMode::Server(config)
+        }
         "--help" => {
             crate::utils::util::help();
             std::process::exit(0);
         }
         _ => {
+            logger::error!("Unknown command: {}", first_arg);
             crate::utils::util::help();
             std::process::exit(1);
         }
