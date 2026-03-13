@@ -39,7 +39,7 @@ pub fn is_file(path: &str) -> bool {
 pub fn path_exists(path: &str) -> bool {
     std::path::Path::new(path).exists()
 }
-#[deprecated(since = "0.1.0", note = "Use exit_and_error(msg) instead")]
+#[deprecated(since = "0.1.0", note = "Use macro exit_and_error instead")]
 pub fn exit_with_error(message: &str) -> ! {
     eprintln!("\x1b[31mError: {}\x1b[0m", message);
     std::process::exit(1);

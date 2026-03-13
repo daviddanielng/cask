@@ -12,6 +12,8 @@ pub fn start_server() {
 
     let mut file_bytes = vec![0u8; file_size as usize];
     exe.read_exact(&mut file_bytes).unwrap();
+    
 
     println!("{}", String::from_utf8(file_bytes).unwrap());
 }
+

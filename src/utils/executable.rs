@@ -6,6 +6,7 @@ use std::{
 static MAGIC_NUMBER: &[u8; 8] = b"SFS1XV2Z";
 use crate::utils::{
     logger::log_verbose,
+    macros::exit_and_error,
     util::{self, exit_and_error, exit_with_error},
 };
 
@@ -114,12 +115,12 @@ fn append_file_to_executable<W: Write>(exe_path: &mut W, file_path: &str) {
 }
 pub fn read_files() {
     let mut exe = std::fs::File::open(get_exe()).unwrap_or_else(|e| {
-        exit_and_error("failed to open executable, {} ", e);
+        exit_and_error!("failed to open executable, {} ", e);
     });
     exe.seek(SeekFrom::End(-16)).unwrap();
     // magic number and file size.
     let mut tail = [0u8; 16];
-    exe.read_exact(&mut tail).unwrap_or_else(|e|{
-        exit_and_error(format!("failed to read executable tail, {}",e).as_str())
+    exe.read_exact(&mut tail).unwrap_or_else(|e| {
+        exit_and_error(format!("failed to read executable tail, {}", e).as_str())
     })
 }
