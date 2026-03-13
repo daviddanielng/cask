@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::io::{Read, Write};
 use std::{fs::File, io::copy, path};
 use walkdir::WalkDir;
@@ -38,12 +39,17 @@ pub fn is_file(path: &str) -> bool {
 pub fn path_exists(path: &str) -> bool {
     std::path::Path::new(path).exists()
 }
-
+#[deprecated(since = "0.1.0", note = "Use exit_and_error(msg) instead")]
 pub fn exit_with_error(message: &str) -> ! {
     eprintln!("\x1b[31mError: {}\x1b[0m", message);
     std::process::exit(1);
 }
+pub fn exit_and_error(msg: impl Display) -> ! {
+    // eprintln!("{msg}");
+    eprintln!("\x1b[31mError: {}\x1b[0m", msg);
 
+    std::process::exit(1);
+}
 pub fn save_to_file(content: &[u8], path: &str) -> bool {
     std::fs::write(path, content).is_ok()
 }
