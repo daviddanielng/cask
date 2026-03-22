@@ -11,7 +11,7 @@ use crate::utils::logger::log_verbose;
 pub fn help() {
     println!();
     println!(
-        "Usage: static-files-server [OPTIONS]
+        "Usage: cask [OPTIONS]
 --pack     Pack your files into a single executable for easier distribution and deployment.
     --folder <path>             Specify the folder to pack.
     --output <path> Optional    Specify the output file name for the packed executable.

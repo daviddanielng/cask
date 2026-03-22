@@ -1,7 +1,10 @@
 use serde::{Deserialize, Deserializer};
 use std::{collections::HashMap, io::Write};
 
-use crate::utils::{macros, util};
+use crate::{
+    server::config::cache::ServerCache,
+    utils::{macros, util},
+};
 
 #[derive(Clone, Deserialize)]
 pub struct ServerRunConfig {
@@ -9,6 +12,7 @@ pub struct ServerRunConfig {
     pub output: String,
     #[serde(default = "default_port", deserialize_with = "deserialize_port")]
     pub port: u16,
+    pub cache: ServerCache,
 }
 fn default_port() -> u16 {
     7997

@@ -89,21 +89,21 @@ fn clean_temp_dir_files(temp_dir: &str) {
 //                 log_info("Starting builder...");
 //                 std::fs::copy(
 //                     excutable,
-//                     "/home/daniel/Documents/Projects/static-files-server/temp/static-files-server",
+//                     "/home/daniel/Documents/Projects/cask/temp/cask",
 //                 )
 //                 .unwrap();
 //                 let file_bytes = std::fs::read(
-//                     "/home/daniel/Documents/Projects/static-files-server/temp/test.txt",
+//                     "/home/daniel/Documents/Projects/cask/temp/test.txt",
 //                 )
 //                 .unwrap();
 //                 let file_size = file_bytes.len() as u64;
 //                 const MAGIC: &[u8; 8] = b"SFS12345";
-//                 let mut output = OpenOptions::new().append(true).open("/home/daniel/Documents/Projects/static-files-server/temp/static-files-server").unwrap();
+//                 let mut output = OpenOptions::new().append(true).open("/home/daniel/Documents/Projects/cask/temp/cask").unwrap();
 //                 output.write_all(&file_bytes).unwrap(); // the file contents
 //                 output.write_all(&file_size.to_le_bytes()).unwrap(); // size as 8 bytes
 //                 output.write_all(MAGIC).unwrap();
 //                 logger::log_info(
-//                     "Build completed successfully. You can find the packed executable at: /home/daniel/Documents/Projects/static-files-server/temp/static-files-server; you can run it to start the server.",
+//                     "Build completed successfully. You can find the packed executable at: /home/daniel/Documents/Projects/cask/temp/cask; you can run it to start the server.",
 //                 );
 //             } else {
 //                 logger::log_error("Current executable file does not exist.", None);

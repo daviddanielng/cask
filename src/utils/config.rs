@@ -1,4 +1,7 @@
-use crate::utils::{builder_config::BuilderRunConfig, logger, server_config::ServerRunConfig};
+use crate::{
+    server::config::config::ServerRunConfig,
+    utils::{builder_config::BuilderRunConfig, logger},
+};
 
 #[derive(Clone)]
 pub enum RunMode {
@@ -38,7 +41,7 @@ fn get_run_mode(arguments: Vec<String>) -> RunMode {
         }
         "--serve" => {
             let config =
-                crate::utils::server_config::ServerRunConfig::parse(arguments[2..].to_vec());
+                crate::server::config::config::ServerRunConfig::parse(arguments[2..].to_vec());
             RunMode::Server(config)
         }
         "--help" => {
