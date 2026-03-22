@@ -1,7 +1,7 @@
 use crate::utils::executable;
 
 pub fn start_server(config: crate::utils::server_config::ServerRunConfig) {
-    executable::read_files();
+    executable::read_files(config.output.as_str());
     //     let mut exe = std::fs::File::open(std::env::current_exe().unwrap()).unwrap();
     //     exe.seek(SeekFrom::End(-16)).unwrap();
     //     let mut tail = [0u8; 16];

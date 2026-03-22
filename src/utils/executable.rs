@@ -96,7 +96,7 @@ fn append_file_to_executable<W: Write>(exe_path: &mut W, file_path: &str) {
         exit_and_error!("failed to write magic number to executable: error {}", e);
     });
 }
-pub fn read_files() {
+pub fn read_files(to: &str) {
     logger::log_info("Reading embedded files from executable...");
     let mut exe = std::fs::File::open(get_exe()).unwrap_or_else(|e| {
         exit_and_error!("failed to open executable, {} ", e);

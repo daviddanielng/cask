@@ -6,4 +6,4 @@ pub mod hash_folder;
 pub mod executable;
 pub mod macros;
 pub mod server_config;
-
+pub mod memory;

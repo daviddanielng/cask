@@ -1,17 +1,54 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use std::{collections::HashMap, io::Write};
 
 use crate::utils::{macros, util};
 
 #[derive(Clone, Deserialize)]
 pub struct ServerRunConfig {
+    #[serde(deserialize_with = "deserialize_output_dir")]
     pub output: String,
-    pub overwrite: bool,
-    #[serde(default = "default_port")]
+    #[serde(default = "default_port", deserialize_with = "deserialize_port")]
     pub port: u16,
 }
 fn default_port() -> u16 {
     7997
+}
+fn deserialize_output_dir<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let output = String::deserialize(deserializer)?;
+    if output.is_empty() {
+        return Err(serde::de::Error::custom(
+            "Output directory path cannot be empty.",
+        ));
+    }
+    if !util::path_exists(&output) {
+        return Err(serde::de::Error::custom(format!(
+            "`output` path does not exist: {}",
+            output
+        )));
+    }
+    if !util::is_dir(&output) {
+        return Err(serde::de::Error::custom(format!(
+            "`output` must be a directory: {}",
+            output
+        )));
+    }
+
+    Ok(output)
+}
+fn deserialize_port<'de, D>(deserializer: D) -> Result<u16, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let port = u16::deserialize(deserializer)?;
+    if port == 0 {
+        return Err(serde::de::Error::custom(
+            "Port number must be between 1 and 65535.",
+        ));
+    }
+    Ok(port)
 }
 impl ServerRunConfig {
     pub(crate) fn parse(arguments: Vec<String>) -> ServerRunConfig {
