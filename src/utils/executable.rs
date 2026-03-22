@@ -95,7 +95,7 @@ fn append_file_to_executable<W: Write>(exe_path: &mut W, file_path: &str) {
         exit_and_error!("failed to write magic number to executable: error {}", e);
     });
 }
-pub fn read_files(to: &str) {
+pub fn read_files(to: &str, config: &crate::server::config::config::ServerRunConfig) {
     logger::log_info("Reading embedded files from executable...");
     let mut exe = std::fs::File::open(get_exe()).unwrap_or_else(|e| {
         exit_and_error!("failed to open executable, {} ", e);
@@ -115,9 +115,35 @@ pub fn read_files(to: &str) {
     log_verbose("Magic number matched, embedded files found in executable.");
     // Get file size from the first 8 bytes of the tail which is stored as little-endian u64.
     let file_size = u64::from_le_bytes(tail[0..8].try_into().unwrap());
+    preventive_memory_check(file_size, config);
     macros::log_info!(
         "File size of embedded files: {}",
         util::bytes_to_readable_size(file_size)
     );
     log_info("Extracting file");
+}
+
+fn preventive_memory_check(
+    total_file_size: u64,
+    config: &crate::server::config::config::ServerRunConfig,
+) {
+    match config.cache.mode {
+        crate::server::config::cache::ServerCacheMode::Fill => {
+            macros::log_verbose!(
+                "Cache mode is set to Fill, using total file size for memory check."
+            );
+            if total_file_size > config.cache.max_memory {
+                exit_and_error!(
+                    "The total size of the embedded files ({}) exceeds the configured max-memory ({}). Extraction cannot proceed.",
+                    util::bytes_to_readable_size(total_file_size),
+                    util::bytes_to_readable_size(config.cache.max_memory)
+                );
+            }
+        }
+        crate::server::config::cache::ServerCacheMode::Hit => {
+            macros::log_verbose!(
+                "Cache mode is set to Hit, files will be saved based on hit frequency."
+            );
+        }
+    }
 }

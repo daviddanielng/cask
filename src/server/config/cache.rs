@@ -1,11 +1,11 @@
-use serde::Deserialize;
+use serde::{Deserialize, de};
 
 use crate::utils::{logger, macros, memory, util};
 
 #[derive(Clone, Deserialize)]
 pub enum ServerCacheMode {
     Fill,
-    Hits,
+    Hit,
 }
 #[derive(Clone, Deserialize)]
 pub struct ServerCache {
@@ -24,7 +24,7 @@ pub struct ServerCache {
 }
 
 fn default_mode() -> ServerCacheMode {
-    ServerCacheMode::Hits
+    ServerCacheMode::Hit
 }
 fn deserialize_cache_mode<'de, D>(deserializer: D) -> Result<ServerCacheMode, D::Error>
 where
@@ -33,8 +33,9 @@ where
     let mode_str = String::deserialize(deserializer)?.to_lowercase();
     match mode_str.as_str() {
         "fill" => Ok(ServerCacheMode::Fill),
+        "hit" => Ok(ServerCacheMode::Hit),
         _ => Err(serde::de::Error::custom(format!(
-            "Invalid cache mode: {}. Supported modes: fill",
+            "Invalid cache mode: {}. Supported modes: fill , hit",
             mode_str
         ))),
     }
@@ -48,13 +49,17 @@ where
     D: serde::Deserializer<'de>,
 {
     let value = String::deserialize(deserializer)?;
-    let (value_str, unit) = value
-        .chars()
-        .partition::<String, _>(|c| c.is_digit(10) || *c == '.');
+    if value.contains(".") {
+        return Err(serde::de::Error::custom(format!(
+            "Invalid counter-reset value: {}. Must be a number followed by an optional unit (S for seconds, M for minutes, H for hours, D for days).",
+            value
+        )));
+    }
+    let (value_str, unit) = value.chars().partition::<String, _>(|c| c.is_digit(10));
     let value: f64 = value_str.parse().map_err(|_| {
         serde::de::Error::custom(format!(
             "Invalid counter-reset value: {}. Must be a number followed by an optional unit (S for seconds, M for minutes, H for hours, D for days).",
-            value_str
+            value
         ))
     })?;
     if value == 0.0 {
@@ -84,16 +89,17 @@ where
     Ok((value * multiplier) as u64)
 }
 fn default_max_memory() -> u64 {
-    let free_memory = crate::utils::memory::free_memory_with_format(Some(memory::MemoryFormat::MB));
+    let free_memory =
+        crate::utils::memory::free_memory_with_format(Some(memory::MemoryFormat::Bytes));
     let total_memory =
-        crate::utils::memory::total_memory_with_format(Some(memory::MemoryFormat::MB));
-    // use the smaller of a third of the free memory or a quarter of the total memory as a safe default
-    let default_max = std::cmp::min(free_memory / 3, total_memory / 4);
+        crate::utils::memory::total_memory_with_format(Some(memory::MemoryFormat::Bytes));
+    // use the smaller of a half of the free memory or a third of the total memory as a safe default
+    let default_max = std::cmp::min(free_memory / 2, total_memory / 3);
     macros::log_verbose!(
-        "Calculated default max-memory: {} MB (free memory: {} MB, total memory: {} MB)",
-        default_max,
-        free_memory,
-        total_memory
+        "Calculated default max-memory: {} (free memory: {}, total memory: {})",
+        util::bytes_to_readable_size(default_max),
+        util::bytes_to_readable_size(free_memory),
+        util::bytes_to_readable_size(total_memory)
     );
     default_max
 }
@@ -127,6 +133,11 @@ where
     let value = value * multiplier;
     let total_memory =
         crate::utils::memory::total_memory_with_format(Some(memory::MemoryFormat::Bytes));
+    if value == 0.0 {
+        return Err(serde::de::Error::custom(
+            "max-memory must be a positive number.",
+        ));
+    }
     if value > total_memory as f64 {
         return Err(serde::de::Error::custom(format!(
             "max-memory value {} exceeds total system memory of {}.",
@@ -134,8 +145,22 @@ where
             util::bytes_to_readable_size(total_memory)
         )));
     }
+    if value < 10.0 * 1024.0 * 1024.0 {
+        return Err(serde::de::Error::custom(
+            "max-memory must be at least 10 MB to ensure proper caching functionality.",
+        ));
+    }
+    if value > (default_max_memory() as f64 * 1.3) {
+        // only show warning if the value is 1.3 times higher than the calculated default to avoid unnecessary warnings for values that are reasonably close to the default
+        macros::log_warning!(
+            "Specified max-memory value {} is quite high compared to the calculated default of {}. Ensure that this is intentional and that your system has enough resources to handle it.",
+            util::bytes_to_readable_size(value as u64),
+            util::bytes_to_readable_size(default_max_memory())
+        );
+    }
+
     macros::log_verbose!(
-        "Parsed max-memory value: {} with unit: {} to {} bytes",
+        "Parsed max-memory value: {} with unit: {} to       {} bytes",
         value,
         unit,
         value * multiplier
