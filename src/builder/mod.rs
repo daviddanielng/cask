@@ -3,10 +3,11 @@ use std::path::Path;
 use crate::utils::{
     executable,
     logger::log_info,
-    macros::{self, exit_and_error},
+    macros::{ exit_and_error},
     util,
 };
 use ctrlc;
+static MANIFESTFILENAME: &str = "??cask_manifest-o-??.json";
 
 pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     let (tx, rx) = std::sync::mpsc::channel();
@@ -18,7 +19,7 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     log_info("starting build");
     let temp_dir = util::generate_temp_dir();
     log_info("making files hash");
-    let vv = crate::utils::hash_folder::hash(
+    let manifest = crate::utils::hash_folder::hash(
         &config.input_path,
         &config.input_path,
         config.use_gzip,
@@ -35,13 +36,14 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     let zip_path = Path::new(format!("{}.zip", temp_dir).as_str())
         .to_string_lossy()
         .to_string();
+    // save the manifest to a file in the temp directory so it can be accessed by the executable when it runs.
     let folder_info_safe_str = Path::new(&temp_dir)
-        .join("folder_info.json")
+        .join(MANIFESTFILENAME)
         .to_string_lossy()
         .to_string();
 
     util::save_to_file(
-        serde_json::to_string(&vv)
+        serde_json::to_string(&manifest)
             .unwrap_or_else(|e| {
                 exit_and_error!("Failed to serialize folder hash data: {}", e);
             })
@@ -49,7 +51,7 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
         &folder_info_safe_str,
     );
     log_info("zipping web files");
-    util::zip_dir(&vv.path, zip_path.as_str());
+    util::zip_dir(&manifest.path, zip_path.as_str());
     log_info("web files zipped successfully");
     log_info("building executable");
     let exe_path = executable::build(temp_dir.as_str(), zip_path.as_str());

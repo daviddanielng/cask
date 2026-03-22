@@ -73,7 +73,7 @@ pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderInf
     if !util::is_dir(path) {
         exit_with_error(format!("{} is not a dir", path).as_str())
     }
-    let mut folder_info = FolderInfo {
+    let mut folder_manifest = FolderInfo {
         path: save_to.to_string(),
         children: Vec::new(),
         size: 0,
@@ -131,8 +131,8 @@ pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderInf
                         }
                         log_verbose("file copied successfully, updating folder info");
                     }
-                    folder_info.size += file_info.size;
-                    folder_info.children.push(PathType::File(file_info));
+                    folder_manifest.size += file_info.size;
+                    folder_manifest.children.push(PathType::File(file_info));
                 } else if entry_path.is_dir() {
                     if !out_path.exists() {
                         if !util::create_dirs(&out_path_str) {
@@ -147,8 +147,8 @@ pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderInf
                     }
                     let children = hash(&entry_path_str, main_path, gzip, out_path_str);
 
-                    folder_info.size += children.size;
-                    folder_info.children.push(PathType::Folder(children));
+                    folder_manifest.size += children.size;
+                    folder_manifest.children.push(PathType::Folder(children));
                     // folder_info.path = relative_path.to_string();
                 } else if entry_path.is_symlink() {
                     log_warning(
@@ -174,5 +174,5 @@ pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderInf
         }
     }
 
-    folder_info
+    folder_manifest
 }

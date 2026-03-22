@@ -1,5 +1,4 @@
 use serde::{Deserialize, Deserializer};
-use std::{collections::HashMap, io::Write};
 
 use crate::{
     server::config::cache::ServerCache,
@@ -38,6 +37,12 @@ where
             "`output` must be a directory: {}",
             output
         )));
+    }
+    if util::dir_has_content(&output) {
+        macros::log_warning!(
+            "Output directory {} is not empty. all files in the directory will be deleted.",
+            output
+        );
     }
 
     Ok(output)
