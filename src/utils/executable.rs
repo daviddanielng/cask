@@ -3,7 +3,7 @@ use std::{
     io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
 };
-static MAGIC_NUMBER: &[u8; 8] = b"SFS1XV2Z";
+static MAGIC_NUMBER: &[u8; 8] = b"CASKXV2Z";
 use crate::utils::{
     logger::{self, log_info, log_verbose},
     macros::{self, exit_and_error},
