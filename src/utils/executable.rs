@@ -15,7 +15,6 @@ fn get_exe() -> PathBuf {
         exit_and_error!("An error occurred while trying to get executable: {}", e);
     })
 }
-
 pub fn build(temp_dir: &str, zip: &str) -> String {
     let current_exe = get_exe();
 
