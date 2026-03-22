@@ -145,11 +145,7 @@ where
             util::bytes_to_readable_size(total_memory)
         )));
     }
-    if value < 10.0 * 1024.0 * 1024.0 {
-        return Err(serde::de::Error::custom(
-            "max-memory must be at least 10 MB to ensure proper caching functionality.",
-        ));
-    }
+
     if value > (default_max_memory() as f64 * 1.3) {
         // only show warning if the value is 1.3 times higher than the calculated default to avoid unnecessary warnings for values that are reasonably close to the default
         macros::log_warning!(
@@ -160,10 +156,10 @@ where
     }
 
     macros::log_verbose!(
-        "Parsed max-memory value: {} with unit: {} to       {} bytes",
+        "Parsed max-memory value: {} with unit: {} to {} bytes",
         value,
         unit,
-        value * multiplier
+        value
     );
-    Ok((value * multiplier) as u64)
+    Ok((value) as u64)
 }

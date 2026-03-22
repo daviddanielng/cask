@@ -130,11 +130,11 @@ fn preventive_memory_check(
     match config.cache.mode {
         crate::server::config::cache::ServerCacheMode::Fill => {
             macros::log_verbose!(
-                "Cache mode is set to Fill, using total file size for memory check."
+                "Cache mode is set to Fill, saving all embedded files to memory."
             );
             if total_file_size > config.cache.max_memory {
                 exit_and_error!(
-                    "The total size of the embedded files ({}) exceeds the configured max-memory ({}). Extraction cannot proceed.",
+                    "Cannot not use cache fill mode, the total size of the embedded files ({}) exceeds the configured max-memory ({}). Extraction cannot proceed.",
                     util::bytes_to_readable_size(total_file_size),
                     util::bytes_to_readable_size(config.cache.max_memory)
                 );
@@ -142,7 +142,7 @@ fn preventive_memory_check(
         }
         crate::server::config::cache::ServerCacheMode::Hit => {
             macros::log_verbose!(
-                "Cache mode is set to Hit, files will be saved based on hit frequency."
+                "Cache mode is set to Hit, files will be saved to memory based on hit frequency."
             );
         }
     }
