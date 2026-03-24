@@ -20,6 +20,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
 
+      - name: Go to docs directory
+        run: cd docs
+
       - name: Install dependencies
         run: bun install
 
