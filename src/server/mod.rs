@@ -62,8 +62,8 @@ pub fn start_server(config: crate::server::config::config::ServerRunConfig) {
 fn extract_files(mut zip_file: File, output: &str) {
     let new_manifest = extract_manifest_from_zip(&mut zip_file);
     let last_manifest = get_last_manifest(output);
-    let new_routes = Routes::build(&new_manifest, last_manifest.as_ref());
-    dbg!(new_routes);
+    let new_routes = Routes::build(&new_manifest, last_manifest.as_ref(), output);
+    // dbg!(new_routes);
     // match last_manifest {
     //     Some(manifest) => {
     //         let last_routes = Routes::new(manifest);

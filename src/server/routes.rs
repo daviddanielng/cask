@@ -45,21 +45,24 @@ impl Routes {
     fn make_folder_route(
         folder_info: &crate::utils::hash_folder::FolderManifest,
         replace: &str,
+        output: &str,
     ) -> (RouteT, Vec<String>) {
         let mut routes = HashMap::new();
         let start_path = folder_info.path.clone().replace(replace, "");
+        let new_output = folder_info.path.clone().replace(replace, output);
+        dbg!(output);
         let mut files = Vec::new();
         for child in &folder_info.children {
             match child {
                 crate::utils::hash_folder::PathType::File(file_info) => {
                     let route_path = format!("{}{}", start_path, file_info.path);
-                    let route_info = Self::make_file_route(file_info, replace);
+                    let route_info = Self::make_file_route(file_info, new_output.as_str());
                     files.push(route_info.file.clone());
                     routes.insert(route_path, route_info);
                 }
                 crate::utils::hash_folder::PathType::Folder(folder_info) => {
                     let (folder_routes, new_files) =
-                        Routes::make_folder_route(folder_info, replace);
+                        Routes::make_folder_route(folder_info, replace, new_output.as_str());
                     routes.extend(folder_routes);
                     files.extend(new_files);
                 }
@@ -67,11 +70,11 @@ impl Routes {
         }
         (routes, files)
     }
-    pub fn build(manifest: &FolderManifest, last_manifest: Option<&FolderManifest>) -> Trinity {
-        let (new_routes, new_files) = Routes::make_folder_route(manifest, &manifest.path);
+    pub fn build(manifest: &FolderManifest, last_manifest: Option<&FolderManifest>,output: &str) -> Trinity {
+        let (new_routes, new_files) = Routes::make_folder_route(manifest, &manifest.path, output);
         match last_manifest {
             Some(last) => {
-                let (last_routes, last_files) = Routes::make_folder_route(last, &last.path);
+                let (last_routes, last_files) = Routes::make_folder_route(last, &last.path, output);
                 let mut files_to_delete = Vec::new();
                 // compare last_files and new_files to find files to delete
                 for file in last_files {
@@ -104,5 +107,5 @@ impl Routes {
                 (new_routes, new_files, None)
             }
         }
-         }
+    }
 }
