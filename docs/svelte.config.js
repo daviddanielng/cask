@@ -1,4 +1,5 @@
 import adapter from '@sveltejs/adapter-static';
+const isDev = process.env.NODE_ENV === 'development';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -7,7 +8,7 @@ const config = {
 			fallback: 'index.html'
 		}),
 		paths: {
-			base: dev ? '' : '/cask'
+			base: isDev ? '' : '/cask'
 		}
 	},
 	vitePlugin: {
