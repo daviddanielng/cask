@@ -1,0 +1,10 @@
+[book]
+title = "Cask"
+authors = ["Daniel Enubiaka"]
+language = "en"
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/you/cask"
+edit-url-template = "https://github.com/you/cask/edit/main/docs/src/{path}"
+ 
