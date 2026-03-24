@@ -2,14 +2,14 @@
 
 ## Quick Start
 
-# pack your site
+### pack your site
 
 ```bash
 cask --pack ./dist --output ./release/output.bin
 
 ```
 
-# user runs it, browser opens automatically
+### run your site
 
 ```bash
 ./release/output.bin
