@@ -5,7 +5,10 @@ const config = {
 	kit: {
 		adapter: adapter({
 			fallback: 'index.html'
-		})
+		}),
+		paths: {
+			base: dev ? '' : '/cask'
+		}
 	},
 	vitePlugin: {
 		dynamicCompileOptions: ({ filename }) =>
