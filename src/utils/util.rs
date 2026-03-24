@@ -6,7 +6,8 @@ use zip::{CompressionMethod, ZipWriter, write::FileOptions};
 
 use flate2::{Compression, write::GzEncoder};
 
-use crate::utils::logger::log_verbose;
+use crate::utils::macros;
+use crate::utils::macros::log_verbose;
 
 pub fn help() {
     println!();
@@ -80,35 +81,43 @@ pub fn generate_random_string(length: usize) -> String {
     let mut rng = rand::rng();
     Alphanumeric.sample_string(&mut rng, length)
 }
-
+/// Delete a file or directory at the given path.
+/// This function will check if the path exists and if it's a file or directory before attempting to delete it. If the path does not exist or is not the expected type, an error will be logged and the program will exit.
+/// # Arguments
+/// * `path` - The path to the file or directory to delete.
+/// # Returns
+/// true if the file or directory was successfully deleted, false otherwise.
 pub fn delete_file(path: &str) -> bool {
     if !is_file(path) {
-        exit_with_error(format!("{} is not a file.", path).as_str());
+        macros::exit_and_error!("{} is not a file.", path);
+    }
+    if !is_file(path) {
+        macros::exit_and_error!("{} is not a file.", path);
     }
     if !path_exists(path) {
-        exit_with_error(format!("File {} does not exist.", path).as_str());
+        macros::exit_and_error!("File {} does not exist.", path);
     }
     std::fs::remove_file(path).is_ok()
 }
 pub fn delete_dir(path: &str) -> bool {
     if !is_dir(path) {
-        exit_with_error(format!("{} is not a directory.", path).as_str());
+        macros::exit_and_error!("{} is not a directory.", path);
     }
     if !path_exists(path) {
-        exit_with_error(format!("Directory {} does not exist.", path).as_str());
+        macros::exit_and_error!("Directory {} does not exist.", path);
     }
     std::fs::remove_dir_all(path).is_ok()
 }
 
 pub fn create_dirs(path: &str) -> bool {
     if path_exists(path) {
-        exit_with_error(format!("Directory {} already exists.", path).as_str());
+        macros::exit_and_error!("Directory {} already exists.", path);
     }
     std::fs::create_dir_all(path).is_ok()
 }
 pub fn copy_file(src: &str, dst: &str) -> bool {
     std::fs::copy(src, dst).unwrap_or_else(|e| {
-        exit_with_error(format!("Failed to copy {} to {}: {}", src, dst, e).as_str());
+        macros::exit_and_error!("Failed to copy {} to {}: {}", src, dst, e);
     });
     true
 }
@@ -119,21 +128,27 @@ pub fn generate_temp_dir() -> String {
         );
     });
     let random_string = generate_random_string(12);
-    let temp_path = path::Path::new(temp_dir).join(random_string);
+    let mut temp_path = path::Path::new(temp_dir).join(random_string);
+    while path_exists(temp_path.to_str().unwrap_or_else(|| {
+        macros::exit_and_error!(
+            "Failed to convert temporary directory path to string: {}",
+            temp_path.display()
+        );
+    })) {
+        let random_string = generate_random_string(12);
+        temp_path = path::Path::new(temp_dir).join(random_string);
+    }
     if !create_dirs(temp_path.to_str().unwrap_or("")) {
-        exit_with_error(
-            format!(
-                "Failed to create temporary directory at {}",
-                temp_path.display()
-            )
-            .as_str(),
+        macros::exit_and_error!(
+            "Failed to create temporary directory at {}",
+            temp_path.display()
         );
     }
 
     temp_path
         .to_str()
         .unwrap_or_else(|| {
-            panic!(
+            macros::exit_and_error!(
                 "Failed to convert temporary directory path to string: {}",
                 temp_path.display()
             );
@@ -143,9 +158,7 @@ pub fn generate_temp_dir() -> String {
 
 pub fn gzip_file(from: &str, to: &str) {
     if !is_file(from) || !path_exists(from) {
-        exit_with_error(
-            format!("unable to zip {} is not a file or it do not exists.", from).as_str(),
-        );
+        macros::exit_and_error!("unable to zip {} is not a file or it do not exists.", from);
     }
     if !is_dir(
         path::Path::new(to)
@@ -159,9 +172,9 @@ pub fn gzip_file(from: &str, to: &str) {
             .to_str()
             .unwrap_or(""),
     ) {
-        exit_with_error(format!("Output directory for gzip does not exist: {}", to).as_str());
+        macros::exit_and_error!("Output directory for gzip does not exist: {}", to);
     }
-    log_verbose(format!("gzipping file {} to {}", from, to).as_str());
+    log_verbose!("gzipping file {} to {}", from, to);
     let mut input = File::open(from).unwrap_or_else(|_| {
         exit_with_error(format!("Failed to open file for gzip: {}", from).as_str());
     });
@@ -173,9 +186,7 @@ pub fn gzip_file(from: &str, to: &str) {
         exit_with_error(format!("Failed to gzip file {}: {}", from, e).as_str());
     });
     encoder.finish().unwrap_or_else(|e| {
-        exit_with_error(
-            format!("Failed to finish gzip encoding for file {}: {}", from, e).as_str(),
-        );
+        macros::exit_and_error!("Failed to finish gzip encoding for file {}: {}", from, e);
     });
 }
 pub fn zip_dir(input_dir: &str, output_path: &str) {
@@ -207,5 +218,17 @@ pub fn zip_dir(input_dir: &str, output_path: &str) {
         zip.write_all(&buffer).unwrap();
     }
 
-    zip.finish().unwrap();
+    zip.finish().unwrap_or_else(|e| {
+        macros::exit_and_error!("Failed to finish creating zip file {}: {}", output_path, e);
+    });
+}
+
+pub fn file_exists_in_zip(zip_path: &str, file_name: &str) -> bool {
+    let file = File::open(zip_path).unwrap_or_else(|e| {
+        macros::exit_and_error!("Failed to open zip file {}: {}", zip_path, e);
+    });
+    let zip = zip::ZipArchive::new(file).unwrap_or_else(|e| {
+        macros::exit_and_error!("Failed to read zip file {}: {}", zip_path, e);
+    });
+    zip.file_names().any(|name| name == file_name)
 }

@@ -1,6 +1,6 @@
-use serde::{Deserialize, de};
+use serde::Deserialize;
 
-use crate::utils::{logger, macros, memory, util};
+use crate::utils::{macros, memory, util};
 
 #[derive(Clone, Deserialize)]
 pub enum ServerCacheMode {
@@ -21,6 +21,85 @@ pub struct ServerCache {
         deserialize_with = "deserialize_max_memory"
     )]
     pub max_memory: u64,
+    #[serde(
+        default = "default_memory_check_interval",
+        deserialize_with = "deserialize_memory_check_interval"
+    )]
+    pub memory_check_interval: u64,
+    #[serde(
+        default = "default_eviction_threshold",
+        deserialize_with = "deserialize_eviction_threshold"
+    )]
+    pub eviction_threshold: u8,
+}
+
+fn default_eviction_threshold() -> u8 {
+    90 // Default to evicting when memory usage reaches 90%
+}
+fn deserialize_eviction_threshold<'de, D>(deserializer: D) -> Result<u8, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value_str = String::deserialize(deserializer)?;
+    let value_str = value_str.trim_end_matches('%');
+    let value: u8 = value_str.parse().map_err(|_| {
+        serde::de::Error::custom(format!(
+            "Invalid eviction-threshold value: {}. Must be a percentage (e.g., 90%).",
+            value_str
+        ))
+    })?;
+    if value == 0 || value > 100 {
+        return Err(serde::de::Error::custom(
+            "eviction-threshold must be a percentage between 1 and 100.",
+        ));
+    }
+    Ok(value)
+}
+fn default_memory_check_interval() -> u64 {
+    60 // Default to checking memory every 60 seconds
+}
+fn deserialize_memory_check_interval<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = String::deserialize(deserializer)?;
+    if value.contains(".") {
+        return Err(serde::de::Error::custom(format!(
+            "Invalid memory-check-interval value: {}. Must be a number followed by an optional unit (S for seconds, M for minutes, H for hours).",
+            value
+        )));
+    }
+    let (value_str, unit) = value.chars().partition::<String, _>(|c| c.is_digit(10));
+    let value: f64 = value_str.parse().map_err(|_| {
+        serde::de::Error::custom(format!(
+            "Invalid memory-check-interval value: {}. Must be a number followed by an optional unit (S for seconds, M for minutes, H for hours).",
+            value
+        ))
+    })?;
+    if value == 0.0 {
+        return Err(serde::de::Error::custom(
+            "memory-check-interval must be a positive integer.",
+        ));
+    }
+    let multiplier = match unit.to_uppercase().as_str() {
+        "S" => 1.0,
+        "M" => 60.0,
+        "H" => 60.0 * 60.0,
+        "" => 1.0, // Default to seconds if no unit is provided
+        _ => {
+            return Err(serde::de::Error::custom(format!(
+                "Invalid memory-check-interval unit: {}. Supported units: S (seconds), M (minutes), H (hours).",
+                unit
+            )));
+        }
+    };
+    macros::log_verbose!(
+        "Parsed memory-check-interval value: {} with unit: {} to {} seconds",
+        value,
+        unit,
+        value * multiplier
+    );
+    Ok((value * multiplier) as u64)
 }
 
 fn default_mode() -> ServerCacheMode {
@@ -89,10 +168,8 @@ where
     Ok((value * multiplier) as u64)
 }
 fn default_max_memory() -> u64 {
-    let free_memory =
-        crate::utils::memory::free_memory_with_format(Some(memory::MemoryFormat::Bytes));
-    let total_memory =
-        crate::utils::memory::total_memory_with_format(Some(memory::MemoryFormat::Bytes));
+    let free_memory = crate::utils::memory::free_memory();
+    let total_memory = crate::utils::memory::total_memory();
     // use the smaller of a half of the free memory or a third of the total memory as a safe default
     let default_max = std::cmp::min(free_memory / 2, total_memory / 3);
     macros::log_verbose!(

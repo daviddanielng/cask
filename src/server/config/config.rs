@@ -12,10 +12,17 @@ pub struct ServerRunConfig {
     #[serde(default = "default_port", deserialize_with = "deserialize_port")]
     pub port: u16,
     pub cache: ServerCache,
+    #[serde(default = "default_fallback")]
+    pub fallback: Option<String>,
 }
+fn default_fallback() -> Option<String> {
+    None
+}
+
 fn default_port() -> u16 {
     7997
 }
+
 fn deserialize_output_dir<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,

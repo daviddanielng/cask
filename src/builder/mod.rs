@@ -7,7 +7,7 @@ use crate::utils::{
     util,
 };
 use ctrlc;
-static MANIFESTFILENAME: &str = "??cask_manifest-o-??.json";
+pub static MANIFESTFILENAME: &str = "??cask_manifest-o-??.json";
 
 pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     let (tx, rx) = std::sync::mpsc::channel();

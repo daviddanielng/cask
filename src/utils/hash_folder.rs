@@ -5,29 +5,31 @@
 static FILEEXTENSTIONTOGZIP: [&str; 10] = [
     "html", "css", "js", "json", "txt", "xml", "csv", "md", "svg", "ico",
 ];
-use std::path::PathBuf;
+use std::{fs::File, path::PathBuf};
 
 use crate::utils::{
     logger::{log_verbose, log_warning},
+    macros::exit_and_error,
     util::{self, exit_with_error},
 };
 use serde::{Deserialize, Serialize};
 use xxhash_rust::xxh3::xxh3_64;
+use zip::ZipArchive;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileInfo {
-    path: String,
-    size: u64,
-    hash: String,
-    gzip: bool,
+    pub path: String,
+    pub size: u64,
+    pub hash: String,
+    pub gzip: bool,
 }
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PathType {
     File(FileInfo),
-    Folder(FolderInfo),
+    Folder(FolderManifest),
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FolderInfo {
+pub struct FolderManifest {
     pub path: String,
     pub children: Vec<PathType>,
     pub size: u64,
@@ -66,14 +68,14 @@ pub struct FolderInfo {
 /// This function does not return recoverable errors. It terminates the program
 /// via `exit_with_error` if the directory does not exist, is not a directory,
 /// or cannot be read.
-pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderInfo {
+pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderManifest {
     if !util::path_exists(path) {
         exit_with_error(format!("{} does not exist", path).as_str())
     }
     if !util::is_dir(path) {
         exit_with_error(format!("{} is not a dir", path).as_str())
     }
-    let mut folder_manifest = FolderInfo {
+    let mut folder_manifest = FolderManifest {
         path: save_to.to_string(),
         children: Vec::new(),
         size: 0,
@@ -175,4 +177,47 @@ pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderInf
     }
 
     folder_manifest
+}
+
+pub fn extract_manifest_from_zip(zip_file: &mut File) -> FolderManifest {
+    let mut archive = ZipArchive::new(zip_file).unwrap_or_else(|e| {
+        exit_and_error!(
+            "An error occurred while trying to read zip file; Error: {}",
+            e
+        );
+    });
+    // get zip file
+    let zip_file = archive
+        .by_name(crate::builder::MANIFESTFILENAME)
+        .unwrap_or_else(|e| {
+            exit_and_error!(
+                "An error occurred while trying to extract manifest from zip file; Error: {}",
+                e
+            );
+        });
+    serde_json::from_reader(zip_file).unwrap_or_else(|e| {
+        exit_and_error!(
+            "An error occurred while trying to parse manifest JSON data; Error: {}",
+            e
+        );
+    })
+}
+
+pub fn get_last_manifest(output: &str) -> Option<FolderManifest> {
+    let build_name = PathBuf::from(output).join(crate::builder::MANIFESTFILENAME);
+    if !build_name.exists() {
+        return None;
+    }
+    let file = File::open(build_name).unwrap_or_else(|e| {
+        exit_and_error!(
+            "An error occurred while trying to open manifest file; Error: {}",
+            e
+        );
+    });
+    Some(serde_json::from_reader(file).unwrap_or_else(|e| {
+        exit_and_error!(
+            "An error occurred while trying to parse manifest JSON data; Error: {}",
+            e
+        );
+    }))
 }
