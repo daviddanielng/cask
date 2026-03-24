@@ -36,4 +36,4 @@ cargo install cask
 
 ## Documentation
 
-Full documentation at https://daviddanielng.github.io/cask
+Full documentation at [https://daviddanielng.github.io/cask](https://daviddanielng.github.io/cask)
