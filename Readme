@@ -20,7 +20,12 @@ cask --pack ./dist --output ./release/output.bin
 Cask embeds your static files into a single executable.
 On first run it extracts the files, starts a local HTTP server,
 and opens the browser automatically. Nothing to install.
-
+#[macro_export]
+macro_rules! log_info {
+    ($($arg:tt)*) => {{
+        $crate::utils::logger::log_info(&format!($($arg)*));
+    }};
+}
 ## Features
 
 - Gzip compression for HTML, CSS and JS out of the box

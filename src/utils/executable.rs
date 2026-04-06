@@ -95,7 +95,7 @@ fn append_file_to_executable<W: Write>(exe_path: &mut W, file_path: &str) {
         exit_and_error!("failed to write magic number to executable: error {}", e);
     });
 }
-pub fn read_files(config: &crate::server::config::config::ServerRunConfig) -> (File, String) {
+pub fn read_files(config: &crate::args::server::ServerRunConfig) -> (File, String) {
     log_info!("Reading embedded files from executable...");
     let mut exe = std::fs::File::open(get_exe()).unwrap_or_else(|e| {
         exit_and_error!("failed to open executable, {} ", e);
@@ -144,7 +144,7 @@ pub fn read_files(config: &crate::server::config::config::ServerRunConfig) -> (F
 
 fn preventive_memory_check(
     total_file_size: u64,
-    config: &crate::server::config::config::ServerRunConfig,
+    config: &crate::args::server::ServerRunConfig,
 ) {
     match config.cache.mode {
         crate::server::config::cache::ServerCacheMode::Fill => {

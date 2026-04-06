@@ -7,7 +7,7 @@ use crate::utils::macros::log_info;
 // }
 
 pub async fn start(port: u16) -> std::io::Result<()> {
-    log_info!("Starting server on port {}...", port);
+    log_info!("Starting server on http://0.0.0.0:{} ", port);
     HttpServer::new(|| App::new().route("/{path:.*}", web::get().to(serve_file)))
         .bind(format!("0.0.0.0:{}", port))?
         .run()
@@ -17,7 +17,7 @@ pub async fn start(port: u16) -> std::io::Result<()> {
 async fn serve_file(req: HttpRequest) -> HttpResponse {
     let path = req.match_info().get("path").unwrap_or("index.html");
     let path = if path.is_empty() { "index.html" } else { path };
-    log_info!("Received request for path: {}", path);
+    log_info!("Received request for path: /{}", path);
 
     let mut response = HttpResponse::Ok();
     response

@@ -1,13 +1,14 @@
+pub mod args;
 mod builder;
 mod server;
 mod utils;
+
+use clap::Parser;
+use directories::ProjectDirs;
 use std::sync::OnceLock;
 
-use directories::ProjectDirs;
-
-use crate::utils::config::RunMode;
 static VERBOSE: OnceLock<bool> = OnceLock::new();
-static RUNCONFIG: OnceLock<utils::config::RunMode> = OnceLock::new();
+// static RUNCONFIG: OnceLock<utils::config::RunMode> = OnceLock::new();
 static FILESAVENAME: &str = "output.run";
 static CACHEDIR: OnceLock<String> = OnceLock::new();
 static VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -24,16 +25,37 @@ fn main() {
             "Failed to determine cache directory. This should never happen on supported platforms."
         );
     }
-    let config = utils::config::parse(std::env::args().collect());
-    match config {
-        RunMode::Builder(builder_config) => {
-            builder::start_builder(builder_config);
+    let args = args::Args::parse();
+
+    VERBOSE.set(args.verbose).unwrap_or_else(|_| {
+        panic!("Failed to set VERBOSE flag. This should never happen since it's only set once.");
+    });
+    match args.start {
+        args::StartKind::Build {
+            input,
+            output,
+            gzip,
+            force,
+        } => {
+            builder::start_builder(input, output, gzip, force);
         }
-        RunMode::Server (server_config) => {
-            server::start_server(server_config);
+        args::StartKind::Serve { config } => {
+            server::start_server(config);
         }
     }
+
+    // let config = utils::config::parse(std::env::args().collect());
+    // match config {
+    //
+    //     RunMode::Builder(builder_config) => {
+    //         builder::start_builder(builder_config);
+    //     }
+    //     RunMode::Server (server_config) => {
+    //         server::start_server(server_config);
+    //     }
+    // }
 }
+
 // utils::logger::log_info(&format!("Starting Static Files Server version {}", VERSION));
 // let mut args = std::env::args().collect::<Vec<String>>();
 // if args.contains(&String::from("--verbose")) {

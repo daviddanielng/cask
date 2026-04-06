@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-pub fn start_server(config: crate::server::config::config::ServerRunConfig) {
+pub fn start_server(config: crate::args::server::ServerRunConfig) {
     let (mut zip_file, zip_file_path) = executable::read_files(&config);
     log_verbose!("Reading zip manifest from extracted embedded zip file.");
     match config.fallback {
@@ -75,3 +75,5 @@ fn extract_files(mut zip_file: File, output: &str) {
     //     }
     // }
 }
+
+

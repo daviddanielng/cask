@@ -2,12 +2,12 @@ use serde::Deserialize;
 
 use crate::utils::{macros, memory, util};
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Deserialize,Debug)]
 pub enum ServerCacheMode {
     Fill,
     Hit,
 }
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Deserialize,Debug)]
 pub struct ServerCache {
     #[serde(
         default = "default_counter_reset",
@@ -239,4 +239,5 @@ where
         value
     );
     Ok((value) as u64)
+
 }

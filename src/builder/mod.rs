@@ -1,15 +1,10 @@
-use std::path::Path;
-
-use crate::utils::{
-    executable,
-    logger::log_info,
-    macros::{ exit_and_error},
-    util,
-};
+use crate::utils::{executable, logger::log_info, macros::exit_and_error, util};
 use ctrlc;
+use std::path::{Path, PathBuf};
+use std::process::Output;
 pub static MANIFESTFILENAME: &str = "??cask_manifest-o-??.json";
 
-pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
+pub fn start_builder(input: PathBuf, output: PathBuf, gzip: bool, force: bool) {
     let (tx, rx) = std::sync::mpsc::channel();
     ctrlc::set_handler(move || {
         let _ = tx.send(());
@@ -20,9 +15,9 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     let temp_dir = util::generate_temp_dir();
     log_info("making files hash");
     let manifest = crate::utils::hash_folder::hash(
-        &config.input_path,
-        &config.input_path,
-        config.use_gzip,
+        input.to_str().unwrap(),
+        input.to_str().unwrap(),
+        gzip,
         temp_dir.as_str(),
     );
     log_info("files hashed successfully");
@@ -57,11 +52,11 @@ pub fn start_builder(config: crate::utils::builder_config::BuilderRunConfig) {
     let exe_path = executable::build(temp_dir.as_str(), zip_path.as_str());
     util::copy_file(
         exe_path.as_str(),
-        format!("{}.run", &config.output_path).as_str(),
+        format!("{}.run", output.to_str().unwrap()).as_str(),
     );
     log_info("executable built");
     clean_temp_dir_files(&temp_dir);
-    log_info(format!("Build completed successfully. You can find the packed executable at: {}.run; you can run it to start the server.", &config.output_path).as_str());
+    log_info(format!("Build completed successfully. You can find the packed executable at: {}.run; you can run it to start the server.", output.to_str().unwrap()).as_str());
 }
 
 fn clean_temp_dir_files(temp_dir: &str) {
