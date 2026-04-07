@@ -36,6 +36,7 @@ impl Routes {
         folder_path: &str,
     ) -> RouteManifest {
         let file_path = format!("{}{}", folder_path, file_info.path);
+        // TODO: add support for more content types
         RouteManifest {
             content_type: "application/octet-stream".to_string(),
             size: file_info.size,

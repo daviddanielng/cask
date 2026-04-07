@@ -1,13 +1,14 @@
-use std::io::{Read, Write};
+use std::io::{ Read, Write};
 use std::{fs::File, io::copy, path};
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
-use zip::{CompressionMethod, ZipWriter, write::FileOptions};
-
-use flate2::{Compression, write::GzEncoder};
+use zip::{CompressionMethod, ZipArchive, ZipWriter, write::FileOptions};
 
 use crate::utils::macros;
-use crate::utils::macros::log_verbose;
+use crate::utils::macros::{exit_and_error, log_verbose};
+use flate2::{Compression, write::GzEncoder};
+use zip::read::ZipFile;
+use zip::result::ZipError;
 
 pub fn help() {
     println!();
@@ -121,6 +122,27 @@ pub fn copy_file(src: &str, dst: &str) -> bool {
     });
     true
 }
+pub fn generate_cache_file() -> String {
+    let cache_dir = crate::CACHEDIR.get().unwrap_or_else(|| {
+        panic!(
+            "CACHEDIR is not set. This should never happen since it's set at the start of main."
+        );
+    });
+    let random_string = generate_random_string(12);
+    let mut temp_path = path::Path::new(cache_dir).join(random_string);
+
+    while temp_path.exists() {
+        temp_path = path::Path::new(cache_dir).join(generate_random_string(12));
+    }
+    let temp_path = temp_path.with_extension("cask");
+    let path_str = temp_path.to_str().unwrap_or_else(|| {
+        exit_and_error!(
+            "Failed to convert temporary file path to string: {}",
+            temp_path.display()
+        );
+    });
+    path_str.to_string()
+}
 pub fn generate_temp_dir() -> String {
     let temp_dir = crate::CACHEDIR.get().unwrap_or_else(|| {
         panic!(
@@ -201,7 +223,7 @@ pub fn zip_dir(input_dir: &str, output_path: &str) {
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_file())
     {
-        // get relative path e.g. "css/style.css" not "/home/user/project/css/style.css"
+        // get a relative path e.g. "css/style.css" not "/home/user/project/css/style.css"
         let rel_path = entry
             .path()
             .strip_prefix(input_dir)
@@ -231,4 +253,12 @@ pub fn file_exists_in_zip(zip_path: &str, file_name: &str) -> bool {
         macros::exit_and_error!("Failed to read zip file {}: {}", zip_path, e);
     });
     zip.file_names().any(|name| name == file_name)
+}
+
+pub fn extract_from_zip(zip: &File, file_path: &str) -> Result<Vec<u8>, ZipError> {
+    let mut archive = ZipArchive::new(zip)?;
+    let mut file = archive.by_name(file_path)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    Ok(buffer)
 }

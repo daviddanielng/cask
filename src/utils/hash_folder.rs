@@ -5,14 +5,14 @@
 static FILEEXTENSTIONTOGZIP: [&str; 10] = [
     "html", "css", "js", "json", "txt", "xml", "csv", "md", "svg", "ico",
 ];
-use std::{fs::File, path::PathBuf};
-
 use crate::utils::{
     logger::{log_verbose, log_warning},
     macros::exit_and_error,
     util::{self, exit_with_error},
 };
 use serde::{Deserialize, Serialize};
+use std::io::Read;
+use std::{fs::File, path::PathBuf};
 use xxhash_rust::xxh3::xxh3_64;
 use zip::ZipArchive;
 
@@ -179,28 +179,43 @@ pub fn hash(path: &str, main_path: &str, gzip: bool, save_to: &str) -> FolderMan
     folder_manifest
 }
 
-pub fn extract_manifest_from_zip(zip_file: &mut File) -> FolderManifest {
-    let mut archive = ZipArchive::new(zip_file).unwrap_or_else(|e| {
-        exit_and_error!(
-            "An error occurred while trying to read zip file; Error: {}",
-            e
-        );
-    });
+pub fn extract_manifest_from_zip(zip: &File) -> FolderManifest {
+    // let mut archive = ZipArchive::new(zip_file).unwrap_or_else(|e| {
+    //     exit_and_error!(
+    //         "An error occurred while trying to read zip file; Error: {}",
+    //         e
+    //     );
+    // });
     // get zip file
-    let zip_file = archive
-        .by_name(crate::builder::MANIFESTFILENAME)
-        .unwrap_or_else(|e| {
+    let zip_file = util::extract_from_zip(zip, crate::builder::MANIFESTFILENAME);
+    match zip_file {
+        Ok(c) => serde_json::from_slice(c.as_slice()).unwrap_or_else(|e| {
+            exit_and_error!(
+                "An error occurred while trying to parse manifest JSON data; Error: {}",
+                e
+            );
+        }),
+        Err(e) => {
             exit_and_error!(
                 "An error occurred while trying to extract manifest from zip file; Error: {}",
                 e
-            );
-        });
-    serde_json::from_reader(zip_file).unwrap_or_else(|e| {
-        exit_and_error!(
-            "An error occurred while trying to parse manifest JSON data; Error: {}",
-            e
-        );
-    })
+            )
+        }
+    }
+    // let zip_file = archive
+    //     .by_name(crate::builder::MANIFESTFILENAME)
+    //     .unwrap_or_else(|e| {
+    //         exit_and_error!(
+    //             "An error occurred while trying to extract manifest from zip file; Error: {}",
+    //             e
+    //         );
+    //     });
+    // serde_json::from_reader(zip_file).unwrap_or_else(|e| {
+    //     exit_and_error!(
+    //         "An error occurred while trying to parse manifest JSON data; Error: {}",
+    //         e
+    //     );
+    // })
 }
 
 pub fn get_last_manifest(output: &str) -> Option<FolderManifest> {

@@ -16,7 +16,6 @@ pub async fn start(port: u16) -> std::io::Result<()> {
 
 async fn serve_file(req: HttpRequest) -> HttpResponse {
     let path = req.match_info().get("path").unwrap_or("index.html");
-    let path = if path.is_empty() { "index.html" } else { path };
     log_info!("Received request for path: /{}", path);
 
     let mut response = HttpResponse::Ok();
