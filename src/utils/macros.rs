@@ -1,6 +1,11 @@
 macro_rules! exit_and_error {
     ($($arg:tt)*) => {{
-        eprintln!("\x1b[31mError: {}\x1b[0m", format!($($arg)*));
+        eprintln!(
+            "\x1b[31m[ERROR] {} ({}:{})\x1b[0m",
+            format!($($arg)*),
+            file!(),
+            line!()
+        );
         std::process::exit(1);
     }};
 }

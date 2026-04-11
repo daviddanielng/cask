@@ -1,12 +1,13 @@
 use std::io::{ Read, Write};
-use std::{fs::File, io::copy, path};
+use std::{fs::File, io, io::copy, path};
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter, write::FileOptions};
 
 use crate::utils::macros;
-use crate::utils::macros::{exit_and_error, log_verbose};
+use crate::utils::macros::{exit_and_error, log_error, log_verbose};
 use flate2::{Compression, write::GzEncoder};
+use xxhash_rust::xxh3::Xxh3;
 use zip::read::ZipFile;
 use zip::result::ZipError;
 
@@ -76,7 +77,21 @@ pub fn exit_with_error(message: &str) -> ! {
 pub fn save_to_file(content: &[u8], path: &str) -> bool {
     std::fs::write(path, content).is_ok()
 }
+pub fn hash_file(path: &str) -> io::Result<u64> {
+    let mut file = File::open(path)?;
+    let mut hasher = Xxh3::new();
+    let mut buffer = [0u8; 8192];
 
+    loop {
+        let n = file.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        hasher.update(&buffer[..n]);
+    }
+
+    Ok(hasher.digest())
+}
 pub fn generate_random_string(length: usize) -> String {
     use rand::distr::{Alphanumeric, SampleString};
     let mut rng = rand::rng();
@@ -115,6 +130,19 @@ pub fn create_dirs(path: &str) -> bool {
         macros::exit_and_error!("Directory {} already exists.", path);
     }
     std::fs::create_dir_all(path).is_ok()
+}pub fn create_dirs_not_existing(path: &str) -> bool {
+    if path_exists(path) {
+        log_verbose!("Path {} already exists.", path);
+        return true
+    }
+    let create= std::fs::create_dir_all(path);
+    match create {
+        Ok(_) => true,
+        Err(e) =>
+            {
+                log_error!("Error creating directory {}: {}", path, e);
+                false }
+    }
 }
 pub fn copy_file(src: &str, dst: &str) -> bool {
     std::fs::copy(src, dst).unwrap_or_else(|e| {
@@ -256,6 +284,7 @@ pub fn file_exists_in_zip(zip_path: &str, file_name: &str) -> bool {
 }
 
 pub fn extract_from_zip(zip: &File, file_path: &str) -> Result<Vec<u8>, ZipError> {
+    log_verbose!("Extracting {} from zip", file_path);
     let mut archive = ZipArchive::new(zip)?;
     let mut file = archive.by_name(file_path)?;
     let mut buffer = Vec::new();

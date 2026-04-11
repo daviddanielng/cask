@@ -1,69 +1,126 @@
+use crate::server::file::File;
+use crate::utils::macros::{exit_and_error, log_verbose};
+use crate::utils::util;
+use crate::{server::routes, utils::manifest::FolderManifest};
+use serde::Serialize;
 use std::collections::HashMap;
+use std::str::FromStr;
 
-use crate::{server::routes, utils::hash_folder::FolderManifest};
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 
 /// RouteManifest contains the content type, size and file path of a route.
 /// # Parameters
-/// -  [content_type]: The content type of the route, for example "text/html'
-/// -  [size]: The size of the file in bytes
-/// -  [file]: The file path of the file to be served for this route, for example "index.html"
+/// - [size]: The size of the file in bytes
+/// - [file]: The file path of the file to be served for this route, for example "index.html"
 pub struct RouteManifest {
-    pub content_type: String,
+    // pub content_type: String,
     pub size: u64,
-    pub file: String,
+    pub file: File,
+    pub gzip: bool,
+
 }
 /// RouteT is a type alias for a HashMap where the key is the route path and the value is the RouteManifest which contains the content type, size and file path of the route.
 /// # Parameters
-/// -  [String]: The route path, for example "/index.html"
-/// -  [RouteManifest]: The manifest for the route which contains the content type, size and file path of the route.
-type RouteT = HashMap<String, RouteManifest>;
-/// Trinity is the return type of Routes::build, it contains the new routes, the new files and the deleted files (if last_manifest is provided)
+/// - [String]: The route path, for example, "/index.html"
+/// - [RouteManifest]: The manifest for the route which contains the content type, size and file path of the route.
+pub type RouteT = HashMap<String, RouteManifest>;
+/// Trinity is the return type of Routes::build,;it contains the new routes, the new files and the deleted files (if last_manifest is provided)
 /// # Parameters
-/// -  [RouteT]: A HashMap of the new routes to be added to the server
+/// - [RouteT]: A HashMap of the new routes to be added to the server
 /// -  [Vec<String>]: A list of new files that need to be extracted from the zip file and added to the server
 /// -  [Option<Vec<String>>]: An optional list of files that need to be deleted
 type Trinity = (RouteT, Vec<String>, Option<Vec<String>>);
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 
 pub struct Routes {
     pub routes: RouteT,
 }
+pub enum RouteExportKind {
+    Json,
+}
 impl Routes {
+    pub fn export(&self, to: RouteExportKind, output_dir: &str) {
+        match to {
+            RouteExportKind::Json => {
+                util::save_to_file(
+                    serde_json::to_string(&self.routes)
+                        .unwrap_or_else(|e| {
+                            exit_and_error!("Failed to export routes: {}", e);
+                        })
+                        .as_bytes(),
+                    format!("{}/oieiie.json", output_dir).as_str(),
+                );
+            }
+        }
+    }
+    pub fn get(&self, path: &str) -> Option<&RouteManifest> {
+        let mut new_path = path.to_string();
+        if !new_path.starts_with("/") {
+            new_path = format!("/{}", new_path);
+        }
+        log_verbose!("Getting route info for : {}", &new_path);
+        self.routes.get(new_path.as_str())
+    }
+    // fn get_mut(&mut self, path: &str) -> Option<&mut RouteManifest> {
+    //     self.routes.get_mut(path)
+    // }
+    // fn insert(&mut self, path: String, route: RouteManifest) {
+    //     self.routes.insert(path, route);
+    // }
+    // fn remove(&mut self, path: &str) -> Option<RouteManifest> {}
     fn make_file_route(
-        file_info: &crate::utils::hash_folder::FileInfo,
-        folder_path: &str,
+        file_info: &crate::utils::manifest::FileManifest
     ) -> RouteManifest {
-        let file_path = format!("{}{}", folder_path, file_info.path);
+        let file_mime;
+        let file_extension = file_info.path.split('.').last().unwrap_or("");
         // TODO: add support for more content types
+        match file_extension {
+            "html" => {
+                file_mime = mime::TEXT_HTML;
+            }
+            "js" => {
+                file_mime = mime::TEXT_JAVASCRIPT;
+            }
+            "css" => {
+                file_mime = mime::TEXT_CSS;
+            }
+            "png"=>{
+                file_mime = mime::IMAGE_PNG;
+            },
+            "svg"=>{
+                file_mime = mime::IMAGE_SVG;
+            },  "jpeg"|"jpg"=>{
+                file_mime = mime::IMAGE_JPEG;
+            },
+            _ => {
+                file_mime = mime::TEXT_PLAIN;
+            }
+        }
         RouteManifest {
-            content_type: "application/octet-stream".to_string(),
             size: file_info.size,
-            file: file_path,
+            file: File::new(file_info.path.clone(), file_mime),
+            gzip: file_info.gzip,
+            
         }
     }
     fn make_folder_route(
-        folder_info: &crate::utils::hash_folder::FolderManifest,
-        replace: &str,
-        output: &str,
-    ) -> (RouteT, Vec<String>) {
+        folder_info: &FolderManifest,base:&str
+    ) -> (RouteT, Vec<File>) {
         let mut routes = HashMap::new();
-        let start_path = folder_info.path.clone().replace(replace, "");
-        let new_output = folder_info.path.clone().replace(replace, output);
-        dbg!(output);
         let mut files = Vec::new();
         for child in &folder_info.children {
             match child {
-                crate::utils::hash_folder::PathType::File(file_info) => {
-                    let route_path = format!("{}{}", start_path, file_info.path);
-                    let route_info = Self::make_file_route(file_info, new_output.as_str());
+                crate::utils::manifest::PathType::File(file_info) => {
+                    let route_info = Self::make_file_route(file_info);
                     files.push(route_info.file.clone());
-                    routes.insert(route_path, route_info);
+                    // Remove the base path to create route, eg we can sever `/home/daniel/Projects/cask/temp/www/_app/immutable/chunks/DsnmJJEf.js` as what is requested is /_app/immutable/chunks/DsnmJJEf.js
+                    let route=file_info.path.clone().replace(base,"");
+
+                    routes.insert(route, route_info);
                 }
-                crate::utils::hash_folder::PathType::Folder(folder_info) => {
+                crate::utils::manifest::PathType::Folder(folder_info) => {
                     let (folder_routes, new_files) =
-                        Routes::make_folder_route(folder_info, replace, new_output.as_str());
+                        Routes::make_folder_route(folder_info,base);
                     routes.extend(folder_routes);
                     files.extend(new_files);
                 }
@@ -71,16 +128,25 @@ impl Routes {
         }
         (routes, files)
     }
-    pub fn build(manifest: &FolderManifest, last_manifest: Option<&FolderManifest>,output: &str) -> Trinity {
-        let (new_routes, new_files) = Routes::make_folder_route(manifest, &manifest.path, output);
+    // fn get_routes(base: &str) -> RouteT {
+    //     let manifest = crate::utils::::hash(base, base, false, "");
+    //     let (routes, _) = Routes::make_folder_route(&manifest, base, base);
+    //     routes
+    // }
+    pub fn build(
+        manifest: &FolderManifest,
+        last_manifest: Option<&FolderManifest>,
+    ) -> Trinity {
+        let (new_routes, new_files) = Routes::make_folder_route(manifest,manifest.path.as_str());
         match last_manifest {
             Some(last) => {
-                let (last_routes, last_files) = Routes::make_folder_route(last, &last.path, output);
+                let (last_routes, last_files) = Routes::make_folder_route(last,last.path.as_str());
                 let mut files_to_delete = Vec::new();
                 // compare last_files and new_files to find files to delete
                 for file in last_files {
-                    if !new_files.contains(&file) {
-                        files_to_delete.push(file);
+                    // TODO: Make more efficient
+                    if new_files.iter().all(|x| x.path == file.path) {
+                        files_to_delete.push(file.path);
                     }
                 }
                 // we add files newly added to the server and files that have been changed, we determine if a file has been changed by comparing the file size and file path of the new route and the last route, if either of them is different we consider the file to be changed and add it to the list of new files to be extracted from the zip file and added to the server
@@ -92,7 +158,9 @@ impl Routes {
                     match last_route {
                         Some(last_route) => {
                             // use file size and file name to determine if file should be overwritten
-                            if last_route.size != route.size || last_route.file != route.file {
+                            if last_route.size != route.size
+                                || last_route.file.path != route.file.path
+                            {
                                 new_files.push(path.clone());
                             }
                         }

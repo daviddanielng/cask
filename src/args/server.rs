@@ -87,6 +87,11 @@ where
             output
         );
     }
+    if !output.ends_with("/"){
+        return Err(serde::de::Error::custom(
+            "`output` must end with '/'.",
+        ))
+    }
 
     Ok(output)
 }

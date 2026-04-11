@@ -38,7 +38,7 @@ pub fn build(temp_dir: &str, zip: &str) -> String {
         .unwrap_or_else(|e| {
             exit_and_error!("failed to open output executable: {}", e);
         });
-    // use a buffered writer to reduce the number of write calls which can improve performance when appending large files to the executable.
+    // use a buffered writer to reduce the number of writing calls which can improve performance when appending large files to the executable.
     let mut writer = BufWriter::with_capacity(1024 * 1024, output);
     append_file_to_executable(&mut writer, zip);
     writer.flush().unwrap_or_else(|e| {
