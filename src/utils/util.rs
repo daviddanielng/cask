@@ -1,4 +1,4 @@
-use std::io::{ Read, Write};
+use std::io::{Read, Write};
 use std::{fs::File, io, io::copy, path};
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
@@ -130,18 +130,19 @@ pub fn create_dirs(path: &str) -> bool {
         macros::exit_and_error!("Directory {} already exists.", path);
     }
     std::fs::create_dir_all(path).is_ok()
-}pub fn create_dirs_not_existing(path: &str) -> bool {
+}
+pub fn create_dirs_not_existing(path: &str) -> bool {
     if path_exists(path) {
         log_verbose!("Path {} already exists.", path);
-        return true
+        return true;
     }
-    let create= std::fs::create_dir_all(path);
+    let create = std::fs::create_dir_all(path);
     match create {
         Ok(_) => true,
-        Err(e) =>
-            {
-                log_error!("Error creating directory {}: {}", path, e);
-                false }
+        Err(e) => {
+            log_error!("Error creating directory {}: {}", path, e);
+            false
+        }
     }
 }
 pub fn copy_file(src: &str, dst: &str) -> bool {
@@ -290,4 +291,33 @@ pub fn extract_from_zip(zip: &File, file_path: &str) -> Result<Vec<u8>, ZipError
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
     Ok(buffer)
+}
+pub fn file_mime(path: &str)->mime::Mime {
+    // TODO: add support for more content types
+    let file_mime;
+    let file_extension = path.split('.').last().unwrap_or("");
+    match file_extension {
+        "html" => {
+            file_mime = mime::TEXT_HTML;
+        }
+        "js" => {
+            file_mime = mime::TEXT_JAVASCRIPT;
+        }
+        "css" => {
+            file_mime = mime::TEXT_CSS;
+        }
+        "png" => {
+            file_mime = mime::IMAGE_PNG;
+        }
+        "svg" => {
+            file_mime = mime::IMAGE_SVG;
+        }
+        "jpeg" | "jpg" => {
+            file_mime = mime::IMAGE_JPEG;
+        }
+        _ => {
+            file_mime = mime::TEXT_PLAIN;
+        }
+    }
+    file_mime
 }

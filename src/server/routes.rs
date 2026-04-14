@@ -17,7 +17,6 @@ pub struct RouteManifest {
     pub size: u64,
     pub file: File,
     pub gzip: bool,
-
 }
 /// RouteT is a type alias for a HashMap where the key is the route path and the value is the RouteManifest which contains the content type, size and file path of the route.
 /// # Parameters
@@ -68,44 +67,14 @@ impl Routes {
     //     self.routes.insert(path, route);
     // }
     // fn remove(&mut self, path: &str) -> Option<RouteManifest> {}
-    fn make_file_route(
-        file_info: &crate::utils::manifest::FileManifest
-    ) -> RouteManifest {
-        let file_mime;
-        let file_extension = file_info.path.split('.').last().unwrap_or("");
-        // TODO: add support for more content types
-        match file_extension {
-            "html" => {
-                file_mime = mime::TEXT_HTML;
-            }
-            "js" => {
-                file_mime = mime::TEXT_JAVASCRIPT;
-            }
-            "css" => {
-                file_mime = mime::TEXT_CSS;
-            }
-            "png"=>{
-                file_mime = mime::IMAGE_PNG;
-            },
-            "svg"=>{
-                file_mime = mime::IMAGE_SVG;
-            },  "jpeg"|"jpg"=>{
-                file_mime = mime::IMAGE_JPEG;
-            },
-            _ => {
-                file_mime = mime::TEXT_PLAIN;
-            }
-        }
+    fn make_file_route(file_info: &crate::utils::manifest::FileManifest) -> RouteManifest {
         RouteManifest {
             size: file_info.size,
-            file: File::new(file_info.path.clone(), file_mime),
+            file: File::new(file_info.path.clone(),file_info.size),
             gzip: file_info.gzip,
-            
         }
     }
-    fn make_folder_route(
-        folder_info: &FolderManifest,base:&str
-    ) -> (RouteT, Vec<File>) {
+    pub fn make_folder_route(folder_info: &FolderManifest, base: &str) -> (RouteT, Vec<File>) {
         let mut routes = HashMap::new();
         let mut files = Vec::new();
         for child in &folder_info.children {
@@ -114,13 +83,12 @@ impl Routes {
                     let route_info = Self::make_file_route(file_info);
                     files.push(route_info.file.clone());
                     // Remove the base path to create route, eg we can sever `/home/daniel/Projects/cask/temp/www/_app/immutable/chunks/DsnmJJEf.js` as what is requested is /_app/immutable/chunks/DsnmJJEf.js
-                    let route=file_info.path.clone().replace(base,"");
+                    let route = file_info.path.clone().replace(base, "");
 
                     routes.insert(route, route_info);
                 }
                 crate::utils::manifest::PathType::Folder(folder_info) => {
-                    let (folder_routes, new_files) =
-                        Routes::make_folder_route(folder_info,base);
+                    let (folder_routes, new_files) = Routes::make_folder_route(folder_info, base);
                     routes.extend(folder_routes);
                     files.extend(new_files);
                 }
@@ -133,14 +101,11 @@ impl Routes {
     //     let (routes, _) = Routes::make_folder_route(&manifest, base, base);
     //     routes
     // }
-    pub fn build(
-        manifest: &FolderManifest,
-        last_manifest: Option<&FolderManifest>,
-    ) -> Trinity {
-        let (new_routes, new_files) = Routes::make_folder_route(manifest,manifest.path.as_str());
+    pub fn build(manifest: &FolderManifest, last_manifest: Option<&FolderManifest>) -> Trinity {
+        let (new_routes, new_files) = Routes::make_folder_route(manifest, manifest.path.as_str());
         match last_manifest {
             Some(last) => {
-                let (last_routes, last_files) = Routes::make_folder_route(last,last.path.as_str());
+                let (last_routes, last_files) = Routes::make_folder_route(last, last.path.as_str());
                 let mut files_to_delete = Vec::new();
                 // compare last_files and new_files to find files to delete
                 for file in last_files {

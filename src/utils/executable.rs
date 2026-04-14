@@ -142,10 +142,7 @@ pub fn read_files(config: &crate::args::server::ServerRunConfig) -> (File, Strin
     (zip_file, zip_file_path)
 }
 
-fn preventive_memory_check(
-    total_file_size: u64,
-    config: &crate::args::server::ServerRunConfig,
-) {
+fn preventive_memory_check(total_file_size: u64, config: &crate::args::server::ServerRunConfig) {
     match config.cache.mode {
         crate::server::config::cache::ServerCacheMode::Fill => {
             log_verbose!("Cache mode is set to Fill, saving all embedded files to memory.");

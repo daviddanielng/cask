@@ -34,6 +34,18 @@ pub enum StartKind {
         server::ServerRunConfig::parse)]
         config: server::ServerRunConfig,
     },
+    #[command(name = "dev-watch", about = "Serve the site")]
+    DevWatch {
+        #[arg(short = 'i', long = "input", help = "The input dir to watch", value_parser = builder::validate_input )]
+        input: PathBuf,
+        #[arg(
+            short = 'p',
+            long = "port",
+            help = "The port to serve on",
+            default_value = "7889"
+        )]
+        port: u16,
+    },
 }
 #[derive(Parser, Debug)]
 #[command(name = "cask", about = "A CLI tool for wrapping static web files to one execuable", long_about = None,version,about)]

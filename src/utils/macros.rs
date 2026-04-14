@@ -23,13 +23,13 @@ macro_rules! log_error {
 macro_rules! log_verbose {
     ($($arg:tt)*) => {{
             $crate::utils::logger::log_verbose(&format!($($arg)*));
-        
+
     }};
 }
 macro_rules! log_warning {
     ($($arg:tt)*) => {{
             $crate::utils::logger::log_warning(&format!($($arg)*));
-        
+
     }};
 }
 

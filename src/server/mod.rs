@@ -1,24 +1,26 @@
 pub mod config;
+pub mod dev_serve;
 pub mod engine;
-pub mod routes;
 pub mod file;
+pub mod routes;
 
 use crate::server::routes::RouteT;
+use crate::utils::macros::log_info;
 use crate::{
     server::routes::Routes,
     utils::{
         executable,
-        manifest::{extract_manifest_from_zip, get_last_manifest},
         macros::{exit_and_error, log_verbose},
+        manifest::{extract_manifest_from_zip, get_last_manifest},
         util,
     },
 };
-use std::fs::File;
+use std::collections::HashMap;
 use std::fs;
+use std::fs::File;
 use std::path::PathBuf;
-use crate::utils::macros::log_info;
+use std::sync::Arc;
 
-pub fn start_dev_serve() {}
 pub fn start_server(config: crate::args::server::ServerRunConfig) {
     let (zip_file, zip_file_path) = executable::read_files(&config);
 
@@ -43,52 +45,36 @@ pub fn start_server(config: crate::args::server::ServerRunConfig) {
             "No fallback file specified in config, 404 will be returned for missing files."
         ),
     }
-    let routes = extract_files(&zip_file, &config.output);
+    let new_routes = extract_files(&zip_file, &config.output);
+    let shared = Arc::new(tokio::sync::RwLock::new(new_routes));
+    let bg_shared = shared.clone();
     actix_web::rt::System::new()
-        .block_on(engine::start(config.port, Routes { routes }))
+        .block_on(engine::start(config.port, bg_shared, config.fallback))
         .unwrap_or_else(|e| {
             exit_and_error!("Failed to start server on port {}: {}", config.port, e);
         });
-
-
-    // log_info!("home is {:?}", manifest);
-    //     let mut exe = std::fs::File::open(std::env::current_exe().unwrap()).unwrap();
-    //     exe.seek(SeekFrom::End(-16)).unwrap();
-    //     let mut tail = [0u8; 16];
-    //     exe.read_exact(&mut tail).unwrap();
-    //     assert_eq!(&tail[8..], b"SFS12345");
-    //     let file_size = u64::from_le_bytes(tail[0..8].try_into().unwrap());
-    //     // Seek to where file bytes start
-    //     exe.seek(SeekFrom::End(-(16 + file_size as i64))).unwrap();
-
-    //     let mut file_bytes = vec![0u8; file_size as usize];
-    //     exe.read_exact(&mut file_bytes).unwrap();
-
-    //     println!("{}", String::from_utf8(file_bytes).unwrap());
 }
 fn extract_files(zip_file: &File, output: &str) -> RouteT {
     let mut new_manifest = extract_manifest_from_zip(zip_file);
     // replace the creation path with new path, so if you built in program with input /home/daniel/projects/www/here, it would be replaced with `output`, this makes it easy to read file after extracting
     new_manifest.replace_path(output);
     let last_manifest = get_last_manifest(output);
-    let (routes, new_files, deleting) =
-        Routes::build(&new_manifest, last_manifest.as_ref());
+    let (routes, new_files, deleting) = Routes::build(&new_manifest, last_manifest.as_ref());
     check_del(deleting);
-    extract_new(zip_file, new_files,output);
-    new_manifest.save( output);
+    extract_new(zip_file, new_files, output);
+    new_manifest.save(output);
     routes
 }
 
-
-fn extract_new(zip: &File, files: Vec<String>,base:&str) {
-    if files.len()==0{
+fn extract_new(zip: &File, files: Vec<String>, base: &str) {
+    if files.len() == 0 {
         log_info!("No new files");
         return;
     }
 
     for file in files {
         // removing base path because we are extracting file from zip, so /home/daniel/ddd/app.css becomes /ddd/app.css
-        let mut new_file = file.replace(base,"").clone();
+        let mut new_file = file.replace(base, "").clone();
         if new_file.starts_with("/") {
             // we have the zip file, / is the start of root path which is not what we want.
             new_file.remove(0);

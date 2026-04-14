@@ -19,3 +19,4 @@ xxhash-rust = { version = "0.8.15", features = ["xxh3"] }
 zip = "8.4.0"
 actix-files = "0.6.10"
 mime = { version = "0.3.17" }
+tokio = "1.51.1"

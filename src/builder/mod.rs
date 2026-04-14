@@ -18,7 +18,9 @@ pub fn start_builder(input: PathBuf, output: PathBuf, gzip: bool, force: bool) {
     log_info("making files hash");
     let manifest = crate::utils::manifest::get_manifest(
         input.to_str().unwrap(),
-        temp_dir.as_str(), gzip,
+        temp_dir.as_str(),
+        gzip,
+        true,
     );
     log_info("files hashed successfully");
     if rx.try_recv().is_ok() {
@@ -31,11 +33,11 @@ pub fn start_builder(input: PathBuf, output: PathBuf, gzip: bool, force: bool) {
     let zip_path = Path::new(format!("{}.zip", temp_dir).as_str())
         .to_string_lossy()
         .to_string();
-  
+
     // save the manifest to a file in the temp directory so it can compressd with emmbbedded files.
-   let manifest_save_location= manifest.save(&temp_dir);
-    
-    println!("Find manifest at {}",manifest_save_location);
+    let manifest_save_location = manifest.save(&temp_dir);
+
+    println!("Find manifest at {}", manifest_save_location);
     log_info("zipping web files");
     util::zip_dir(&manifest.path, zip_path.as_str());
     log_info("web files zipped successfully");

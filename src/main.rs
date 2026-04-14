@@ -42,6 +42,9 @@ fn main() {
         args::StartKind::Serve { config } => {
             server::start_server(config);
         }
+        args::StartKind::DevWatch { input, port } => {
+            server::dev_serve::start_dev_serve(input, port);
+        }
     }
 
     // let config = utils::config::parse(std::env::args().collect());
