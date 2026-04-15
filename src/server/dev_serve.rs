@@ -1,6 +1,6 @@
 use crate::builder::MANIFESTFILENAME;
 use crate::server::routes::{RouteT, Routes};
-use crate::utils::macros::{exit_and_error, log_verbose};
+use crate::utils::macros::{exit_and_error, log_verbose,log_info};
 use crate::utils::manifest::FolderManifest;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -22,14 +22,14 @@ pub fn start_dev_serve(input: PathBuf, port: u16) {
 
                     let new_manifest = load_current_manifest(new_input_str);
                     let changes = see_changes(&new_manifest, new_input_str);
-                    if changes.len() > 0 {
-                        dbg!(changes);
+                    let count_changes = changes.len();
+                    if count_changes > 0 {
                         let mut m = spawn_shared.write().await;
                         let (new_routes, _) =
                             Routes::make_folder_route(&new_manifest, new_manifest.path.as_str());
                         *m = new_routes;
 
-                        println!("route reloaded!");
+                        log_info!("route reloaded! ({} changes)", count_changes);
                     }
                 }
             });
