@@ -16,13 +16,7 @@ pub fn log_warning(message: &str) {
 
     println!("{YELLOW}[WARNING] {message}{RESET}");
 }
-pub fn log_warning_inline(message: &str) {
-    const YELLOW: &str = "\x1b[33m";
-    const RESET: &str = "\x1b[0m";
 
-    print!("{YELLOW}[WARNING] {message}{RESET}");
-    let _ = std::io::stdout().flush();
-}
 pub fn log_info(message: &str) {
     println!("[INFO] {}", message);
 }
@@ -33,10 +27,3 @@ pub fn log_verbose(message: &str) {
     }
 }
 
-macro_rules! error {
-     ($($arg:tt)*) => {{
-        $crate::utils::logger::log_error(&format!($($arg)*), None);
-    }};
-}
-
-pub(crate) use error;

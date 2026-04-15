@@ -168,8 +168,8 @@ where
     Ok((value * multiplier) as u64)
 }
 fn default_max_memory() -> u64 {
-    let free_memory = crate::utils::memory::free_memory();
-    let total_memory = crate::utils::memory::total_memory();
+    let free_memory = memory::free_memory();
+    let total_memory = memory::total_memory();
     // use the smaller of a half of the free memory or a third of the total memory as a safe default
     let default_max = std::cmp::min(free_memory / 2, total_memory / 3);
     macros::log_verbose!(
@@ -209,7 +209,7 @@ where
     };
     let value = value * multiplier;
     let total_memory =
-        crate::utils::memory::total_memory_with_format(Some(memory::MemoryFormat::Bytes));
+        memory::total_memory_with_format(Some(memory::MemoryFormat::Bytes));
     if value == 0.0 {
         return Err(serde::de::Error::custom(
             "max-memory must be a positive number.",

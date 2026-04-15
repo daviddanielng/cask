@@ -4,33 +4,12 @@ use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter, write::FileOptions};
 
-use crate::utils::macros;
 use crate::utils::macros::{exit_and_error, log_error, log_verbose};
 use flate2::{Compression, write::GzEncoder};
 use xxhash_rust::xxh3::Xxh3;
-use zip::read::ZipFile;
 use zip::result::ZipError;
 
-pub fn help() {
-    println!();
-    println!(
-        "Usage: cask [OPTIONS]
---pack     Pack your files into a single executable for easier distribution and deployment.
-    --folder <path>             Specify the folder to pack.
-    --output <path> Optional    Specify the output file name for the packed executable.
-    --no-gzip                    Disable gzip compression for the packed files.
-    --overwrite                  Allow overwriting the output file if it already exists.
 
---serve <config_file>   Extract and serve files from a packed executable. 
-
---verbose   Enable verbose logging for more detailed output.
---help     Show this help message and exit.
-"
-    );
-}
-pub fn is_port_available(port: u16) -> bool {
-    std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
-}
 
 pub fn dir_has_content(path: &str) -> bool {
     WalkDir::new(path)
@@ -39,7 +18,7 @@ pub fn dir_has_content(path: &str) -> bool {
         .any(|e| e.path().is_file())
 }
 pub fn is_file_extension(path: &str, extension: &str) -> bool {
-    std::path::Path::new(path)
+    path::Path::new(path)
         .extension()
         .and_then(|ext| ext.to_str())
         .map_or(false, |ext_str| ext_str.eq_ignore_ascii_case(extension))
@@ -57,16 +36,16 @@ pub fn bytes_to_readable_size(bytes: u64) -> String {
     format!("{:.2} {}", size, UNITS[unit_index])
 }
 pub fn is_dir(path: &str) -> bool {
-    std::path::Path::new(path).is_dir()
+    path::Path::new(path).is_dir()
 }
 pub fn file_size(path: &str) -> u64 {
     std::fs::metadata(path).map(|meta| meta.len()).unwrap_or(0)
 }
 pub fn is_file(path: &str) -> bool {
-    std::path::Path::new(path).is_file()
+    path::Path::new(path).is_file()
 }
 pub fn path_exists(path: &str) -> bool {
-    std::path::Path::new(path).exists()
+    path::Path::new(path).exists()
 }
 #[deprecated(since = "0.1.0", note = "Use macro exit_and_error instead")]
 pub fn exit_with_error(message: &str) -> ! {
@@ -105,29 +84,29 @@ pub fn generate_random_string(length: usize) -> String {
 /// true if the file or directory was successfully deleted, false otherwise.
 pub fn delete_file(path: &str) -> bool {
     if !is_file(path) {
-        macros::exit_and_error!("{} is not a file.", path);
+        exit_and_error!("{} is not a file.", path);
     }
     if !is_file(path) {
-        macros::exit_and_error!("{} is not a file.", path);
+        exit_and_error!("{} is not a file.", path);
     }
     if !path_exists(path) {
-        macros::exit_and_error!("File {} does not exist.", path);
+        exit_and_error!("File {} does not exist.", path);
     }
     std::fs::remove_file(path).is_ok()
 }
 pub fn delete_dir(path: &str) -> bool {
     if !is_dir(path) {
-        macros::exit_and_error!("{} is not a directory.", path);
+        exit_and_error!("{} is not a directory.", path);
     }
     if !path_exists(path) {
-        macros::exit_and_error!("Directory {} does not exist.", path);
+        exit_and_error!("Directory {} does not exist.", path);
     }
     std::fs::remove_dir_all(path).is_ok()
 }
 
 pub fn create_dirs(path: &str) -> bool {
     if path_exists(path) {
-        macros::exit_and_error!("Directory {} already exists.", path);
+        exit_and_error!("Directory {} already exists.", path);
     }
     std::fs::create_dir_all(path).is_ok()
 }
@@ -147,30 +126,9 @@ pub fn create_dirs_not_existing(path: &str) -> bool {
 }
 pub fn copy_file(src: &str, dst: &str) -> bool {
     std::fs::copy(src, dst).unwrap_or_else(|e| {
-        macros::exit_and_error!("Failed to copy {} to {}: {}", src, dst, e);
+        exit_and_error!("Failed to copy {} to {}: {}", src, dst, e);
     });
     true
-}
-pub fn generate_cache_file() -> String {
-    let cache_dir = crate::CACHEDIR.get().unwrap_or_else(|| {
-        panic!(
-            "CACHEDIR is not set. This should never happen since it's set at the start of main."
-        );
-    });
-    let random_string = generate_random_string(12);
-    let mut temp_path = path::Path::new(cache_dir).join(random_string);
-
-    while temp_path.exists() {
-        temp_path = path::Path::new(cache_dir).join(generate_random_string(12));
-    }
-    let temp_path = temp_path.with_extension("cask");
-    let path_str = temp_path.to_str().unwrap_or_else(|| {
-        exit_and_error!(
-            "Failed to convert temporary file path to string: {}",
-            temp_path.display()
-        );
-    });
-    path_str.to_string()
 }
 pub fn generate_temp_dir() -> String {
     let temp_dir = crate::CACHEDIR.get().unwrap_or_else(|| {
@@ -181,7 +139,7 @@ pub fn generate_temp_dir() -> String {
     let random_string = generate_random_string(12);
     let mut temp_path = path::Path::new(temp_dir).join(random_string);
     while path_exists(temp_path.to_str().unwrap_or_else(|| {
-        macros::exit_and_error!(
+        exit_and_error!(
             "Failed to convert temporary directory path to string: {}",
             temp_path.display()
         );
@@ -190,7 +148,7 @@ pub fn generate_temp_dir() -> String {
         temp_path = path::Path::new(temp_dir).join(random_string);
     }
     if !create_dirs(temp_path.to_str().unwrap_or("")) {
-        macros::exit_and_error!(
+        exit_and_error!(
             "Failed to create temporary directory at {}",
             temp_path.display()
         );
@@ -199,7 +157,7 @@ pub fn generate_temp_dir() -> String {
     temp_path
         .to_str()
         .unwrap_or_else(|| {
-            macros::exit_and_error!(
+            exit_and_error!(
                 "Failed to convert temporary directory path to string: {}",
                 temp_path.display()
             );
@@ -209,7 +167,7 @@ pub fn generate_temp_dir() -> String {
 
 pub fn gzip_file(from: &str, to: &str) {
     if !is_file(from) || !path_exists(from) {
-        macros::exit_and_error!("unable to zip {} is not a file or it do not exists.", from);
+        exit_and_error!("unable to zip {} is not a file or it do not exists.", from);
     }
     if !is_dir(
         path::Path::new(to)
@@ -223,21 +181,21 @@ pub fn gzip_file(from: &str, to: &str) {
             .to_str()
             .unwrap_or(""),
     ) {
-        macros::exit_and_error!("Output directory for gzip does not exist: {}", to);
+        exit_and_error!("Output directory for gzip does not exist: {}", to);
     }
     log_verbose!("gzipping file {} to {}", from, to);
     let mut input = File::open(from).unwrap_or_else(|_| {
-        exit_with_error(format!("Failed to open file for gzip: {}", from).as_str());
+        exit_and_error!("Failed to open file for gzip: {}", from);
     });
     let output = File::create(to).unwrap_or_else(|e| {
-        exit_with_error(format!("Failed to create gzip output file {}: {}", to, e).as_str());
+        exit_and_error!("Failed to create gzip output file {}: {}", to, e);
     });
     let mut encoder = GzEncoder::new(output, Compression::fast());
     copy(&mut input, &mut encoder).unwrap_or_else(|e| {
-        exit_with_error(format!("Failed to gzip file {}: {}", from, e).as_str());
+        exit_and_error!("Failed to gzip file {}: {}", from, e);
     });
     encoder.finish().unwrap_or_else(|e| {
-        macros::exit_and_error!("Failed to finish gzip encoding for file {}: {}", from, e);
+        exit_and_error!("Failed to finish gzip encoding for file {}: {}", from, e);
     });
 }
 pub fn zip_dir(input_dir: &str, output_path: &str) {
@@ -270,16 +228,16 @@ pub fn zip_dir(input_dir: &str, output_path: &str) {
     }
 
     zip.finish().unwrap_or_else(|e| {
-        macros::exit_and_error!("Failed to finish creating zip file {}: {}", output_path, e);
+        exit_and_error!("Failed to finish creating zip file {}: {}", output_path, e);
     });
 }
 
 pub fn file_exists_in_zip(zip_path: &str, file_name: &str) -> bool {
     let file = File::open(zip_path).unwrap_or_else(|e| {
-        macros::exit_and_error!("Failed to open zip file {}: {}", zip_path, e);
+        exit_and_error!("Failed to open zip file {}: {}", zip_path, e);
     });
-    let zip = zip::ZipArchive::new(file).unwrap_or_else(|e| {
-        macros::exit_and_error!("Failed to read zip file {}: {}", zip_path, e);
+    let zip = ZipArchive::new(file).unwrap_or_else(|e| {
+        exit_and_error!("Failed to read zip file {}: {}", zip_path, e);
     });
     zip.file_names().any(|name| name == file_name)
 }

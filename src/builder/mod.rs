@@ -1,9 +1,9 @@
-use crate::utils::{executable, logger::log_info, macros::exit_and_error, util};
+use crate::utils::{executable, logger::log_info, util};
 use ctrlc;
 use std::path::{Path, PathBuf};
-use std::process::Output;
+
 pub static MANIFESTFILENAME: &str = "??cask_manifest-o-??.json";
-pub static ROUTESFILENAME: &str = "??cask_routes-o-??.json";
+pub static ROUTESFILENAME: &str = "??cask_routes-o-??";
 
 pub fn start_builder(input: PathBuf, output: PathBuf, gzip: bool, force: bool) {
     let (tx, rx) = std::sync::mpsc::channel();

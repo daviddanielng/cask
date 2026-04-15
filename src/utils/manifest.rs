@@ -133,7 +133,7 @@ pub fn get_manifest(start_path: &str, output: &str, gzip: bool, copy: bool) -> F
     )
 }
 pub fn extract_manifest_from_zip(zip: &File) -> FolderManifest {
-    let zip_file = util::extract_from_zip(zip, crate::builder::MANIFESTFILENAME);
+    let zip_file = util::extract_from_zip(zip, MANIFESTFILENAME);
     match zip_file {
         Ok(c) => serde_json::from_slice(c.as_slice()).unwrap_or_else(|e| {
             exit_and_error!(
@@ -151,7 +151,7 @@ pub fn extract_manifest_from_zip(zip: &File) -> FolderManifest {
 }
 
 pub fn get_last_manifest(output: &str) -> Option<FolderManifest> {
-    let build_name = PathBuf::from(output).join(crate::builder::MANIFESTFILENAME);
+    let build_name = PathBuf::from(output).join(MANIFESTFILENAME);
     if !build_name.exists() {
         return None;
     }

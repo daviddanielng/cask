@@ -8,7 +8,6 @@ use directories::ProjectDirs;
 use std::sync::OnceLock;
 
 static VERBOSE: OnceLock<bool> = OnceLock::new();
-// static RUNCONFIG: OnceLock<utils::config::RunMode> = OnceLock::new();
 static FILESAVENAME: &str = "output.run";
 static CACHEDIR: OnceLock<String> = OnceLock::new();
 static VERSION: &str = env!("CARGO_PKG_VERSION");

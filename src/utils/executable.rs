@@ -97,7 +97,7 @@ fn append_file_to_executable<W: Write>(exe_path: &mut W, file_path: &str) {
 }
 pub fn read_files(config: &crate::args::server::ServerRunConfig) -> (File, String) {
     log_info!("Reading embedded files from executable...");
-    let mut exe = std::fs::File::open(get_exe()).unwrap_or_else(|e| {
+    let mut exe = File::open(get_exe()).unwrap_or_else(|e| {
         exit_and_error!("failed to open executable, {} ", e);
     });
     exe.seek(SeekFrom::End(-16)).unwrap();

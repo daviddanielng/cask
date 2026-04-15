@@ -1,10 +1,10 @@
+use crate::builder::ROUTESFILENAME;
 use crate::server::file::File;
 use crate::utils::macros::{exit_and_error, log_verbose};
 use crate::utils::util;
-use crate::{server::routes, utils::manifest::FolderManifest};
+use crate::{utils::manifest::FolderManifest};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize)]
 
@@ -34,10 +34,13 @@ type Trinity = (RouteT, Vec<String>, Option<Vec<String>>);
 pub struct Routes {
     pub routes: RouteT,
 }
+#[allow(dead_code)]
 pub enum RouteExportKind {
     Json,
 }
+
 impl Routes {
+    #[allow(dead_code)]
     pub fn export(&self, to: RouteExportKind, output_dir: &str) {
         match to {
             RouteExportKind::Json => {
@@ -47,7 +50,7 @@ impl Routes {
                             exit_and_error!("Failed to export routes: {}", e);
                         })
                         .as_bytes(),
-                    format!("{}/oieiie.json", output_dir).as_str(),
+                    format!("{}/{}.json", output_dir,ROUTESFILENAME).as_str(),
                 );
             }
         }

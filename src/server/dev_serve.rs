@@ -2,8 +2,6 @@ use crate::builder::MANIFESTFILENAME;
 use crate::server::routes::{RouteT, Routes};
 use crate::utils::macros::{exit_and_error, log_verbose};
 use crate::utils::manifest::FolderManifest;
-use actix_web::{HttpRequest, HttpResponse, get};
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -14,7 +12,7 @@ pub fn start_dev_serve(input: PathBuf, port: u16) {
 
     actix_web::rt::System::new()
         .block_on(async move {
-            // Reload manifest every 5 seconds
+            // Reload manifest every 5 seconds  
             actix_web::rt::spawn(async move {
                 let spawn_shared = shared.clone();
                 let new_input_str = input.to_str().unwrap();
