@@ -34,7 +34,7 @@ pub enum StartKind {
         server::ServerRunConfig::parse)]
         config: server::ServerRunConfig,
     },
-    #[command(name = "dev-watch", about = "Serve the site")]
+    #[command(name = "watch", about = "Watch the input dir and serve the site")]
     DevWatch {
         #[arg(short = 'i', long = "input", help = "The input dir to watch", value_parser = builder::validate_input )]
         input: PathBuf,
